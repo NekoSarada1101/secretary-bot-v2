@@ -5,6 +5,8 @@ import logging
 import json
 import traceback
 from slack_bolt import App
+from slack_bolt.adapter.flask import SlackRequestHandler
+from flask import Flask, request
 from google.cloud import firestore, secretmanager
 
 secret_client = secretmanager.SecretManagerServiceClient()
@@ -21,8 +23,12 @@ TWITCH_CLIENT_SECRET = secret_client.access_secret_version(request={'name': 'pro
 
 USER_ID = os.environ.get('USER_ID')
 
-app = App(token=SLACK_BOT_TOKEN,
+flask_app = Flask(__name__)
+
+bolt_app = App(token=SLACK_BOT_TOKEN,
           signing_secret=SLACK_SIGNING_SECRET)
+
+handler = SlackRequestHandler(bolt_app)
 
 
 class JsonFormatter(logging.Formatter):
@@ -43,13 +49,13 @@ logger.setLevel(logging.INFO)
 logger.addHandler(stream)
 
 
-@app.message("hello")
+@bolt_app.message("hello")
 def message_hello(message, say):
     logger.info('request={}'.format(message))
     say(f"Hey there <@{message['user']}>!")
 
 
-@app.command("/twitch")
+@bolt_app.command("/twitch")
 def twitch(ack, say, command):
     logger.info('----- start slash command /twitch -----')
     logger.info('request={}'.format(command))
@@ -95,5 +101,10 @@ def twitch(ack, say, command):
     logger.info('----- end slash command /twitch -----')
 
 
+@flask_app.route("/slack/events", methods=["POST"])
+def slack_events():
+    return handler.handle(request)
+
+
 if __name__ == "__main__":
-    app.start(port=int(os.environ.get("PORT", 3000)))
+    flask_app.run(port=int(os.environ.get("PORT", 3000)))
