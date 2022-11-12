@@ -113,6 +113,42 @@ def index():
     return 'Flask Test'
 
 
+@flask_app.route('/twitch/eventsub', methods=["POST"])
+def event_subscription_handler():
+    logger.info('----- start event subscription handler -----')
+
+    logger.info('----- check message type -----')
+
+    massage_type = 'Twitch-Eventsub-Message-Type'
+    massage_type_notification = 'notification'
+    massage_type_verification = 'webhook_callback_verification'
+
+    if massage_type_notification == request.headers[massage_type]:
+        logger.info('message_type={}'.format(massage_type_notification))
+        logger.info('request={}'.format(request.get_data()))
+
+        logger.info('----- post slack chat -----')
+        payload = {
+            'token': SLACK_BOT_TOKEN,
+            'channel': '#twitch',
+            'text': request.get_data()
+        }
+        response = requests.post('https://slack.com/api/chat.postMessage', data=payload)
+        logger.info(response.text)
+
+        logger.info('----- end event subscription handler -----')
+
+        return 'event subscription success!', 204
+
+    elif massage_type_verification == request.headers[massage_type]:
+        logger.info('message_type={}'.format(massage_type_verification))
+        logger.info('request={}'.format(request.get_data()))
+
+        logger.info('----- end event subscription handler -----')
+
+        return request.get_json['challenge'], 200
+
+
 @flask_app.route("/slack/events", methods=["POST"])
 def slack_events():
     return handler.handle(request)
