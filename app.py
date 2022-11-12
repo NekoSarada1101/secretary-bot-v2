@@ -54,6 +54,13 @@ def message_hello(message, say):
     say(f"Hey there <@{message['user']}>!")
 
 
+@bolt_app.command("/test")
+def test(ack, say, command):
+    ack()
+    logger.info('request={}'.format(command))
+    say('OK!')
+
+
 @bolt_app.command("/twitch")
 def twitch(ack, say, command):
     logger.info('----- start slash command /twitch -----')
@@ -98,6 +105,12 @@ def twitch(ack, say, command):
 
     say(response.text)
     logger.info('----- end slash command /twitch -----')
+
+
+@flask_app.route('/', methods=["POST"])
+def index():
+    logger.info('Flask Test')
+    return 'Flask Test'
 
 
 @flask_app.route("/slack/events", methods=["POST"])
