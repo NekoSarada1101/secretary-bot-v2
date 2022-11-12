@@ -72,6 +72,8 @@ def twitch(ack, say, command):
     logger.info('----- start slash command /twitch -----')
     logger.info('request={}'.format(command))
 
+    validate_twitch_access_token()
+
     logger.info('----- get firestore -----')
     doc_ref = firestore_client.collection('secretary_bot_v2').document('twitch')
 
@@ -82,6 +84,27 @@ def twitch(ack, say, command):
     }
     response = requests.get('https://api.twitch.tv/helix/streams/followed?user_id={}'.format(USER_ID), headers=headers)
     logger.info('response={}'.format(response.text))
+
+    say(response.text)
+    logger.info('----- end slash command /twitch -----')
+
+
+@flask_app.route('/twitch/token/validate', methods=["POST"])
+def validate():
+    validate_twitch_access_token()
+    return 'OK', 200
+
+
+def validate_twitch_access_token ():
+    logger.info('----- start validate twitch access token -----')
+    logger.info('----- get firestore -----')
+    doc_ref = firestore_client.collection('secretary_bot_v2').document('twitch')
+
+    logger.info('----- get twitch api -----')
+    headers = {
+        'Authorization': 'Bearer {}'.format(doc_ref.get().to_dict()['oauth_access_token'])
+    }
+    response = requests.get('https://id.twitch.tv/oauth2/validate', headers=headers)
 
     if response.status_code == 401:
         logger.info('----- refresh twitch access token -----')
@@ -100,16 +123,7 @@ def twitch(ack, say, command):
         }
         firestore_client.collection('secretary_bot_v2').document('twitch').set(token)
 
-        logger.info('----- post twitch api -----')
-        headers = {
-            'Authorization': 'Bearer {}'.format(doc_ref.get().to_dict()['oauth_access_token']),
-            'Client-Id': TWITCH_CLIENT_ID
-        }
-        response = requests.get('https://api.twitch.tv/helix/streams/followed?user_id={}'.format(USER_ID), headers=headers)
-        logger.info('response={}'.format(response.text))
-
-    say(response.text)
-    logger.info('----- end slash command /twitch -----')
+    logger.info('----- end validate twitch access token -----')
 
 
 # flask functions ===========================================
