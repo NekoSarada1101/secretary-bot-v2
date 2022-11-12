@@ -36,15 +36,14 @@ class JsonFormatter(logging.Formatter):
         return json.dumps({
             'level': log.levelname,
             'message': log.getMessage(),
-            'timestamp': self.formatTime(log, self.datefmt),
-            'traceback': traceback.format_exc() if log.exc_info else []
         })
 
-formatter = JsonFormatter(datefmt="%Y-%m-%d %H:%M:%S")
+
+formatter = JsonFormatter()
 stream = logging.StreamHandler(stream=sys.stdout)
 stream.setFormatter(formatter)
 
-logger = logging.getLogger('sample')
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 logger.addHandler(stream)
 
