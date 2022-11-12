@@ -9,6 +9,8 @@ from slack_bolt.adapter.flask import SlackRequestHandler
 from flask import Flask, request
 from google.cloud import firestore, secretmanager
 
+
+# constant ============================================
 secret_client = secretmanager.SecretManagerServiceClient()
 firestore_client = firestore.Client()
 
@@ -26,9 +28,11 @@ USER_ID = os.environ.get('USER_ID')
 flask_app = Flask(__name__)
 
 bolt_app = App(token=SLACK_BOT_TOKEN,
-          signing_secret=SLACK_SIGNING_SECRET)
+               signing_secret=SLACK_SIGNING_SECRET)
 
 handler = SlackRequestHandler(bolt_app)
+
+# logger ===============================================
 
 
 class JsonFormatter(logging.Formatter):
@@ -48,6 +52,7 @@ logger.setLevel(logging.INFO)
 logger.addHandler(stream)
 
 
+# bolt functions ==========================================
 @bolt_app.message("hello")
 def message_hello(message, say):
     logger.info('request={}'.format(message))
@@ -107,6 +112,7 @@ def twitch(ack, say, command):
     logger.info('----- end slash command /twitch -----')
 
 
+# flask functions ===========================================
 @flask_app.route('/', methods=["POST"])
 def index():
     logger.info('Flask Test')
