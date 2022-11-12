@@ -3,7 +3,9 @@ import sys
 import requests
 import logging
 import json
+import random
 import traceback
+from datetime import datetime
 from slack_bolt import App
 from slack_bolt.adapter.flask import SlackRequestHandler
 from flask import Flask, request
@@ -85,17 +87,80 @@ def twitch(ack, say, command):
     response = requests.get('https://api.twitch.tv/helix/streams/followed?user_id={}'.format(USER_ID), headers=headers)
     logger.info('response={}'.format(response.text))
 
-    say(response.text)
+    response_json = response.json()
+    attachments = []
+
+    for res in response_json['data']:
+        logger.info('----- get twitch api -----')
+        user = requests.get('https://api.twitch.tv/helix/users?id={}'.format(res['user_id']), headers=headers).json()
+
+        color = "#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
+        started_at = datetime.strptime(res['started_at'], "%Y-%m-%dT%H:%M:%SZ").strftime('%m月%d日 %H時%M分')
+
+        attachment = {
+            "color": color,
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "*{}*".format(res['user_name'])
+                    }
+                },
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "<https://www.twitch.tv/{}|{}>".format(res['user_login'], res['title'])
+                    }
+                },
+                {
+                    "type": "section",
+                    "fields": [
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Playing*"
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Started at*"
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": res['game_name']
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": started_at
+                        }
+                    ],
+                    "accessory": {
+                        "type": "image",
+                        "image_url": user['data'][0]['profile_image_url'],
+                        "alt_text": res['user_name']
+                    }
+                }
+            ]
+        }
+        attachments.append(attachment)
+
+    payload = {
+        "text": 'Twitch Now On Stream',
+        "attachments": attachments
+    }
+    logger.info('payload={}'.format(payload))
+
+    say(payload)
     logger.info('----- end slash command /twitch -----')
 
 
-@flask_app.route('/twitch/token/validate', methods=["POST"])
+@ flask_app.route('/twitch/token/validate', methods=["POST"])
 def validate():
     validate_twitch_access_token()
     return 'OK', 200
 
 
-def validate_twitch_access_token ():
+def validate_twitch_access_token():
     logger.info('----- start validate twitch access token -----')
     logger.info('----- get firestore -----')
     doc_ref = firestore_client.collection('secretary_bot_v2').document('twitch')
@@ -105,6 +170,7 @@ def validate_twitch_access_token ():
         'Authorization': 'Bearer {}'.format(doc_ref.get().to_dict()['oauth_access_token'])
     }
     response = requests.get('https://id.twitch.tv/oauth2/validate', headers=headers)
+    logger.info('response={}'.format(response.text))
 
     if response.status_code == 401:
         logger.info('----- refresh twitch access token -----')
@@ -143,18 +209,85 @@ def event_subscription_handler():
     massage_type_notification = 'notification'
     massage_type_verification = 'webhook_callback_verification'
 
+    request_json = request.get_json()
+
     if massage_type_notification == request.headers[massage_type]:
         logger.info('message_type={}'.format(massage_type_notification))
         logger.info('request={}'.format(request.get_data()))
 
+        logger.info('----- get firestore -----')
+        doc_ref = firestore_client.collection('secretary_bot_v2').document('twitch')
+
+        logger.info('----- get twitch api -----')
+        headers = {
+            'Authorization': 'Bearer {}'.format(doc_ref.get().to_dict()['oauth_access_token']),
+            'Client-Id': TWITCH_CLIENT_ID
+        }
+        user = requests.get('https://api.twitch.tv/helix/users?id={}'.format(request_json['event']['broadcaster_user_login']), headers=headers).json()
+
+        logger.info('----- get twitch api -----')
+        channel = requests.get('https://api.twitch.tv/helix/channels?broadcaster_id={}'.format(request_json['event']['broadcaster_user_id']), headers=headers)
+
+        color = "#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
+        started_at = datetime.strptime(request_json['event']['started_at'], "%Y-%m-%dT%H:%M:%SZ").strftime('%m月%d日 %H時%M分')
+
+        attachment = [{
+            "color": color,
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "*{}*".format(request_json['event']['broadcaster_user_name'])
+                    }
+                },
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "<https://www.twitch.tv/{}|{}>".format(request_json['event']['broadcaster_user_login'], channel['data'][0]['title'])
+                    }
+                },
+                {
+                    "type": "section",
+                    "fields": [
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Playing*"
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Started at*"
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": channel['data'][0]['game_name']
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": started_at
+                        }
+                    ],
+                    "accessory": {
+                        "type": "image",
+                        "image_url": user['data'][0]['profile_image_url'],
+                        "alt_text": request_json['event']['broadcaster_user_name']
+                    }
+                }
+            ]
+        }]
         logger.info('----- post slack chat -----')
+
         payload = {
             'token': SLACK_BOT_TOKEN,
             'channel': '#twitch',
-            'text': request.get_data()
+            'text': 'Twitch Now On Stream',
+            'attachments': attachment
         }
+        logger.info('payload={}'.format(payload))
+
         response = requests.post('https://slack.com/api/chat.postMessage', data=payload)
-        logger.info(response.text)
+        logger.info('response={}'.format(response.text))
 
         logger.info('----- end event subscription handler -----')
 
