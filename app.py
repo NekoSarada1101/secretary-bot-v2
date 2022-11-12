@@ -68,9 +68,9 @@ def test(ack, say, command):
 
 @bolt_app.command("/twitch")
 def twitch(ack, say, command):
+    ack()
     logger.info('----- start slash command /twitch -----')
     logger.info('request={}'.format(command))
-    ack()
 
     logger.info('----- get firestore -----')
     doc_ref = firestore_client.collection('secretary_bot_v2').document('twitch')
@@ -152,7 +152,7 @@ def event_subscription_handler():
 
         logger.info('----- end event subscription handler -----')
 
-        return request.get_json['challenge'], 200
+        return request.get_json()['challenge'], 200
 
 
 @flask_app.route("/slack/events", methods=["POST"])
