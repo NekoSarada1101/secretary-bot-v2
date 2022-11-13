@@ -19,7 +19,7 @@ steps:
         "asia-northeast1",
         "--allow-unauthenticated",
         "--update-env-vars",
-        "USER_ID=${_USER_ID},URL=${_URL}",
+        "USER_ID=${_USER_ID},URL=${_URL},TWITCH_SLACK_CHANNEL_ID=${_TWITCH_SLACK_CHANNEL_ID}",
         "--service-account",
         "secretary-bot-v2@slackbot-288310.iam.gserviceaccount.com"
       ]

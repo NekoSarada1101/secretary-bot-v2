@@ -20,6 +20,7 @@ SLACK_SIGNING_SECRET = secret_client.access_secret_version(request={'name': 'pro
 TWITCH_CLIENT_ID = secret_client.access_secret_version(request={'name': 'projects/831232013080/secrets/SECRETARY_BOT_V2_TWITCH_CLIENT_ID/versions/latest'}).payload.data.decode('UTF-8')
 TWITCH_CLIENT_SECRET = secret_client.access_secret_version(request={'name': 'projects/831232013080/secrets/SECRETARY_BOT_V2_TWITCH_CLIENT_SECRET/versions/latest'}).payload.data.decode('UTF-8')
 USER_ID = os.environ.get('USER_ID')
+TWITCH_SLACK_CHANNEL_ID = os.environ.get('TWITCH_SLACK_CHANNEL_ID')
 
 flask_app = Flask(__name__)
 bolt_app = App(token=SLACK_BOT_TOKEN,
@@ -314,9 +315,9 @@ def event_subscription_handler():
             logger.info('----- POST slack api send chat message -----')
             payload = {
                 'token': SLACK_BOT_TOKEN,
-                'channel': '#twitch',
-                'text': 'Twitch Now On Stream',
-                'attachments': attachment
+                'channel': TWITCH_SLACK_CHANNEL_ID,
+                'text': 'Twitch Start Stream',
+                'attachments': json.dumps(attachment)
             }
             logger.info('payload={}'.format(payload))
 
@@ -362,9 +363,9 @@ def event_subscription_handler():
 
             payload = {
                 'token': SLACK_BOT_TOKEN,
-                'channel': '#twitch',
+                'channel': TWITCH_SLACK_CHANNEL_ID,
                 'text': 'Event Subscription',
-                'attachments': attachment
+                'attachments': json.dumps(attachment)
             }
             logger.info('payload={}'.format(payload))
 
