@@ -79,78 +79,123 @@ def twitch(ack, say, command):
     logger.info('----- get firestore -----')
     doc_ref = firestore_client.collection('secretary_bot_v2').document('twitch')
 
-    logger.info('----- post twitch api -----')
-    headers = {
-        'Authorization': 'Bearer {}'.format(doc_ref.get().to_dict()['oauth_access_token']),
-        'Client-Id': TWITCH_CLIENT_ID
-    }
-    response = requests.get('https://api.twitch.tv/helix/streams/followed?user_id={}'.format(USER_ID), headers=headers)
-    logger.info('response={}'.format(response.text))
+    values = command['text'].split(' ')
 
-    response_json = response.json()
-    attachments = []
+    if values[0] == 'now':
 
-    for res in response_json['data']:
-        logger.info('----- get twitch api -----')
-        user = requests.get('https://api.twitch.tv/helix/users?id={}'.format(res['user_id']), headers=headers).json()
-
-        color = "#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
-        started_at = datetime.strptime(res['started_at'], "%Y-%m-%dT%H:%M:%SZ").strftime('%m月%d日 %H時%M分')
-
-        attachment = {
-            "color": color,
-            "blocks": [
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": "*{}*".format(res['user_name'])
-                    }
-                },
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": "<https://www.twitch.tv/{}|{}>".format(res['user_login'], res['title'])
-                    }
-                },
-                {
-                    "type": "section",
-                    "fields": [
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Playing*"
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Started at*"
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": res['game_name']
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": started_at
-                        }
-                    ],
-                    "accessory": {
-                        "type": "image",
-                        "image_url": user['data'][0]['profile_image_url'],
-                        "alt_text": res['user_name']
-                    }
-                }
-            ]
+        logger.info('----- get now on stream list -----')
+        logger.info('----- post twitch api -----')
+        headers = {
+            'Authorization': 'Bearer {}'.format(doc_ref.get().to_dict()['oauth_access_token']),
+            'Client-Id': TWITCH_CLIENT_ID
         }
-        attachments.append(attachment)
+        response = requests.get('https://api.twitch.tv/helix/streams/followed?user_id={}'.format(USER_ID), headers=headers)
+        logger.info('response={}'.format(response.text))
 
-    payload = {
-        "text": 'Twitch Now On Stream',
-        "attachments": attachments
-    }
-    logger.info('payload={}'.format(payload))
+        response_json = response.json()
+        attachments = []
 
-    say(payload)
+        for res in response_json['data']:
+            logger.info('----- get twitch api -----')
+            user = requests.get('https://api.twitch.tv/helix/users?id={}'.format(res['user_id']), headers=headers).json()
+            logger.info('response={}'.format(user))
+
+            color = "#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
+            started_at = datetime.strptime(res['started_at'], "%Y-%m-%dT%H:%M:%SZ").strftime('%m月%d日 %H時%M分')
+
+            attachment = {
+                "color": color,
+                "blocks": [
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": "*{}*".format(res['user_name'])
+                        }
+                    },
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": "<https://www.twitch.tv/{}|{}>".format(res['user_login'], res['title'])
+                        }
+                    },
+                    {
+                        "type": "section",
+                        "fields": [
+                            {
+                                "type": "mrkdwn",
+                                "text": "*Playing*"
+                            },
+                            {
+                                "type": "mrkdwn",
+                                "text": "*Started at*"
+                            },
+                            {
+                                "type": "mrkdwn",
+                                "text": res['game_name']
+                            },
+                            {
+                                "type": "mrkdwn",
+                                "text": started_at
+                            }
+                        ],
+                        "accessory": {
+                            "type": "image",
+                            "image_url": user['data'][0]['profile_image_url'],
+                            "alt_text": res['user_name']
+                        }
+                    }
+                ]
+            }
+            attachments.append(attachment)
+
+        logger.info('----- post slack chat -----')
+        payload = {
+            "text": 'Twitch Now On Stream',
+            "attachments": attachments
+        }
+        logger.info('payload={}'.format(payload))
+        say(payload)
+
+    elif values[0] == 'sub':
+
+        logger.info('----- set stream online event subscription -----')
+        logger.info('----- get twitch api -----')
+        headers = {
+            'Authorization': 'Bearer {}'.format(doc_ref.get().to_dict()['oauth_access_token']),
+            'Client-Id': TWITCH_CLIENT_ID
+        }
+        user = requests.get('https://api.twitch.tv/helix/users?login={}'.format(values[1]), headers=headers).json()
+        logger.info('response={}'.format(user))
+        user_id = user['data'][0]['id']
+
+        logger.info('----- post twitch api -----')
+        response = requests.post('https://id.twitch.tv/oauth2/token?client_id={}&client_secret={}&grant_type=client_credentials'.format(TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET))
+        logger.info('response={}'.format(response.text))
+
+        logger.info('----- post twitch api -----')
+        headers = {
+            'Authorization': 'Bearer {}'.format(response.json()['access_token']),
+            'Client-Id': TWITCH_CLIENT_ID,
+            'Content-Type': 'application/json',
+        }
+        data = {
+            "type": "stream.online",
+            "version": "1",
+            "condition": {
+                "broadcaster_user_id": user_id
+            },
+            "transport": {
+                "method": "webhook",
+                "callback": os.environ('URL'),
+                "secret": "aaaaaaaaaa"
+            }
+        }
+        response = requests.post('https://api.twitch.tv/helix/eventsub/subscriptions', headers=headers, data=data)
+        logger.info('response={}'.format(response.text))
+        say('{}さんのstream.onlineのevent subscriptionを要求しました。'.format(user['data'][0]['display_name']))
+
     logger.info('----- end slash command /twitch -----')
 
 
@@ -276,8 +321,8 @@ def event_subscription_handler():
                 }
             ]
         }]
-        logger.info('----- post slack chat -----')
 
+        logger.info('----- post slack chat -----')
         payload = {
             'token': SLACK_BOT_TOKEN,
             'channel': '#twitch',
@@ -296,6 +341,46 @@ def event_subscription_handler():
     elif massage_type_verification == request.headers[massage_type]:
         logger.info('message_type={}'.format(massage_type_verification))
         logger.info('request={}'.format(request.get_data()))
+
+        logger.info('----- get twitch api -----')
+        headers = {
+            'Authorization': 'Bearer {}'.format(doc_ref.get().to_dict()['oauth_access_token']),
+            'Client-Id': TWITCH_CLIENT_ID
+        }
+        user = requests.get('https://api.twitch.tv/helix/users?id={}'.format(
+            request.get_json()['subscription']['condition']['broadcaster_user_id']
+        ), headers=headers).json()
+
+        logger.info('----- post slack chat -----')
+        color = "#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
+        attachment = {
+            "color": color,
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "<https://www.twitch.tv/{}|Success {} stream.online event subscription !>".format(user['data'][0]['login'], user['data'][0]['display_name'])
+                    },
+                    "accessory": {
+                        "type": "image",
+                        "image_url": user['data'][0]['profile_image_url'],
+                        "alt_text": user['data'][0]['display_name']
+                    }
+                },
+            ]
+        }
+
+        payload = {
+            'token': SLACK_BOT_TOKEN,
+            'channel': '#twitch',
+            'text': 'Event Subscription',
+            'attachments': attachment
+        }
+        logger.info('payload={}'.format(payload))
+
+        response = requests.post('https://slack.com/api/chat.postMessage', data=payload)
+        logger.info('response={}'.format(response.text))
 
         logger.info('----- end event subscription handler -----')
 
