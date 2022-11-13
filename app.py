@@ -229,18 +229,19 @@ def validate_twitch_access_token():
 @flask_app.route('/twitch/eventsub', methods=['POST'])
 def event_subscription_handler():
     logger.info('===== START event subscription handler =====')
-
-    logger.info('----- get firestore -----')
-    doc_ref = firestore_client.collection('secretary_bot_v2').document('twitch')
-
-    logger.info('----- check message type -----')
-    massage_type = 'Twitch-Eventsub-Message-Type'
-    massage_type_notification = 'notification'
-    massage_type_verification = 'webhook_callback_verification'
-
     request_json = request.get_json()
 
     try:
+        validate_twitch_access_token()
+
+        logger.info('----- get firestore -----')
+        doc_ref = firestore_client.collection('secretary_bot_v2').document('twitch')
+
+        logger.info('----- check message type -----')
+        massage_type = 'Twitch-Eventsub-Message-Type'
+        massage_type_notification = 'notification'
+        massage_type_verification = 'webhook_callback_verification'
+
         if massage_type_notification == request.headers[massage_type]:
             logger.info('message_type={}'.format(massage_type_notification))
             logger.info('request={}'.format(request.get_data()))
