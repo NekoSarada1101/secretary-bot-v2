@@ -15,22 +15,15 @@ from google.cloud import firestore, secretmanager
 secret_client = secretmanager.SecretManagerServiceClient()
 firestore_client = firestore.Client()
 
-
 SLACK_BOT_TOKEN = secret_client.access_secret_version(request={'name': 'projects/831232013080/secrets/SECRETARY_BOT_V2_SLACK_BOT_TOKEN/versions/latest'}).payload.data.decode('UTF-8')
-
 SLACK_SIGNING_SECRET = secret_client.access_secret_version(request={'name': 'projects/831232013080/secrets/SECRETARY_BOT_V2_SLACK_SIGNING_SECRET/versions/latest'}).payload.data.decode('UTF-8')
-
 TWITCH_CLIENT_ID = secret_client.access_secret_version(request={'name': 'projects/831232013080/secrets/SECRETARY_BOT_V2_TWITCH_CLIENT_ID/versions/latest'}).payload.data.decode('UTF-8')
-
 TWITCH_CLIENT_SECRET = secret_client.access_secret_version(request={'name': 'projects/831232013080/secrets/SECRETARY_BOT_V2_TWITCH_CLIENT_SECRET/versions/latest'}).payload.data.decode('UTF-8')
-
 USER_ID = os.environ.get('USER_ID')
 
 flask_app = Flask(__name__)
-
 bolt_app = App(token=SLACK_BOT_TOKEN,
                signing_secret=SLACK_SIGNING_SECRET)
-
 handler = SlackRequestHandler(bolt_app)
 
 
@@ -256,10 +249,18 @@ def event_subscription_handler():
                 'Authorization': 'Bearer {}'.format(doc_ref.get().to_dict()['oauth_access_token']),
                 'Client-Id': TWITCH_CLIENT_ID
             }
-            user_info = requests.get('https://api.twitch.tv/helix/users?id={}'.format(request_json['event']['broadcaster_user_login']), headers=headers).json()
+            user_info = requests.get('https://api.twitch.tv/helix/users?id={}'.format(
+                request_json['event']['broadcaster_user_id']),
+                headers=headers
+            ).json()
+            logger.info('response={}'.format(user_info))
 
-            logger.info('----- GET twitch api get channel ingo -----')
-            channel_info = requests.get('https://api.twitch.tv/helix/channels?broadcaster_id={}'.format(request_json['event']['broadcaster_user_id']), headers=headers)
+            logger.info('----- GET twitch api get channel info -----')
+            channel_info = requests.get('https://api.twitch.tv/helix/channels?broadcaster_id={}'.format(
+                request_json['event']['broadcaster_user_id']),
+                headers=headers
+            ).json()
+            logger.info('response={}'.format(channel_info))
 
             color = '#'+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
             started_at = datetime.strptime(request_json['event']['started_at'], '%Y-%m-%dT%H:%M:%SZ').strftime('%m月%d日 %H時%M分')
@@ -334,9 +335,10 @@ def event_subscription_handler():
                 'Client-Id': TWITCH_CLIENT_ID
             }
             user_info = requests.get('https://api.twitch.tv/helix/users?id={}'.format(
-                request.get_json()['subscription']['condition']['broadcaster_user_id']
-            ), headers=headers).json()
-            logger.info('request={}'.format(user_info))
+                request.get_json()['subscription']['condition']['broadcaster_user_id']),
+                headers=headers
+            ).json()
+            logger.info('response={}'.format(user_info))
 
             logger.info('----- POST slack api send chat message -----')
             color = '#'+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
