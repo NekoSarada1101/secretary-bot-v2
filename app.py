@@ -246,6 +246,18 @@ def event_subscription_handler():
             logger.info('message_type={}'.format(massage_type_notification))
             logger.info('request={}'.format(request.get_data()))
 
+            logger.info('----- get firestore -----')
+            doc_ref_event = firestore_client.collection('secretary_bot_v2').document('twitch_eventsub')
+            if doc_ref_event.get().to_dict()['stream_online'] == request.get_json()['event']['id']:
+                logger.info('===== SKIP event subscription handler =====')
+                return 'event subscription success!', 204
+
+            logger.info('----- update firestore -----')
+            event_id = {
+                'stream_online': request.get_json()['event']['id'],
+            }
+            firestore_client.collection('secretary_bot_v2').document('twitch_eventsub').set(event_id)
+
             logger.info('----- GET twitch api get user info -----')
             headers = {
                 'Authorization': 'Bearer {}'.format(doc_ref.get().to_dict()['oauth_access_token']),
