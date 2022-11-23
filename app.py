@@ -132,7 +132,9 @@ def twitch(ack, say, command):
             logger.info('----- slack send chat message -----')
             payload = {
                 'text': 'Twitch Now On Stream',
-                'attachments': attachments
+                'attachments': attachments,
+                'username': 'Twitch',
+                'icon_emoji': ':twitch:',
             }
             logger.info('payload={}'.format(payload))
             say(payload)
@@ -172,7 +174,13 @@ def twitch(ack, say, command):
             response = requests.post('https://api.twitch.tv/helix/eventsub/subscriptions', headers=headers, data=json.dumps(data))
             logger.info('response={}'.format(response.text))
 
-            say('{}さんのstream.onlineのevent subscriptionを要求しました。'.format(user_info['data'][0]['display_name']))
+            payload = {
+                'text': '{}さんのstream.onlineのevent subscriptionを要求しました。'.format(user_info['data'][0]['display_name']),
+                'username': 'Twitch',
+                'icon_emoji': ':twitch:',
+            }
+            logger.info('payload={}'.format(payload))
+            say(payload)
 
     except Exception as e:
         logger.error(e)
@@ -378,7 +386,9 @@ def event_subscription_handler():
                 'token': SLACK_BOT_TOKEN,
                 'channel': TWITCH_SLACK_CHANNEL_ID,
                 'text': 'Event Subscription',
-                'attachments': json.dumps(attachment)
+                'attachments': json.dumps(attachment),
+                'username': 'Twitch',
+                'icon_emoji': ':twitch:',
             }
             logger.info('payload={}'.format(payload))
 
