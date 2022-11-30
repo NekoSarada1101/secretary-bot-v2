@@ -338,7 +338,9 @@ def event_subscription_handler():
                 'token': SLACK_BOT_TOKEN,
                 'channel': TWITCH_SLACK_CHANNEL_ID,
                 'text': '{} now streaming {}'.format(request_json['event']['broadcaster_user_name'], channel_info['data'][0]['game_name']),
-                'attachments': json.dumps(attachment)
+                'attachments': json.dumps(attachment),
+                'username': 'Twitch',
+                'icon_emoji': ':twitch:',
             }
             logger.info('payload={}'.format(payload))
 
