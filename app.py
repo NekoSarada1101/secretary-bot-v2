@@ -141,7 +141,7 @@ def twitch(ack, say, command):
 
         elif values[0] == 'sub':
             logger.info('===== START set event subscription =====')
-            logger.info('----- START set stream.online')
+            logger.info('----- START set stream.online -----')
             logger.info('----- GET twitch api get user info -----')
             headers = {
                 'Authorization': 'Bearer {}'.format(doc_ref.get().to_dict()['oauth_access_token']),
@@ -174,9 +174,17 @@ def twitch(ack, say, command):
             }
             response = requests.post('https://api.twitch.tv/helix/eventsub/subscriptions', headers=headers, data=json.dumps(data))
             logger.info('response={}'.format(response.text))
-            logger.info('----- END set stream.online')
 
-            logger.info('----- START set channel.update')
+            payload = {
+                'text': '{}さんのstream.onlineのevent subscriptionを要求しました。'.format(user_info['data'][0]['display_name']),
+                'username': 'Twitch',
+                'icon_emoji': ':twitch:',
+            }
+            logger.info('payload={}'.format(payload))
+            say(payload)
+            logger.info('----- END set stream.online -----')
+
+            logger.info('----- START set channel.update -----')
             logger.info('----- POST twitch api request channel.update event subscription -----')
             headers = {
                 'Authorization': 'Bearer {}'.format(response.json()['access_token']),
@@ -197,15 +205,46 @@ def twitch(ack, say, command):
             }
             response = requests.post('https://api.twitch.tv/helix/eventsub/subscriptions', headers=headers, data=json.dumps(data))
             logger.info('response={}'.format(response.text))
-            logger.info('----- END set channel.update')
 
             payload = {
-                'text': '{}さんのstream.onlineのevent subscriptionを要求しました。'.format(user_info['data'][0]['display_name']),
+                'text': '{}さんのchannel.updateのevent subscriptionを要求しました。'.format(user_info['data'][0]['display_name']),
                 'username': 'Twitch',
                 'icon_emoji': ':twitch:',
             }
             logger.info('payload={}'.format(payload))
             say(payload)
+            logger.info('----- END set channel.update -----')
+
+            logger.info('----- START set stream.offline -----')
+            logger.info('----- POST twitch api request stream.offline event subscription -----')
+            headers = {
+                'Authorization': 'Bearer {}'.format(response.json()['access_token']),
+                'Client-Id': TWITCH_CLIENT_ID,
+                'Content-Type': 'application/json',
+            }
+            data = {
+                'type': 'stream.offline',
+                'version': '1',
+                'condition': {
+                    'broadcaster_user_id': user_info['data'][0]['id']
+                },
+                'transport': {
+                    'method': 'webhook',
+                    'callback': os.environ.get('URL'),
+                    'secret': 'aaaaaaaaaa'
+                }
+            }
+            response = requests.post('https://api.twitch.tv/helix/eventsub/subscriptions', headers=headers, data=json.dumps(data))
+            logger.info('response={}'.format(response.text))
+
+            payload = {
+                'text': '{}さんのstream.offlineのevent subscriptionを要求しました。'.format(user_info['data'][0]['display_name']),
+                'username': 'Twitch',
+                'icon_emoji': ':twitch:',
+            }
+            logger.info('payload={}'.format(payload))
+            say(payload)
+            logger.info('----- END set stream.offline -----')
 
     except Exception as e:
         logger.error(e)
