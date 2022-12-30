@@ -253,6 +253,7 @@ def twitch(ack, say, command):
 
     except Exception as e:
         logger.error(e)
+        say('エラーが発生しました。ログを確認してください。')
     finally:
         logger.info('===== END slash command /twitch =====')
 
