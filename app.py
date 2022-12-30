@@ -246,8 +246,8 @@ def twitch(ack, say, command):
             say(payload)
             logger.info('----- END set stream.offline -----')
 
-            logger.info('----- set firestore twitch streaming -----')
-            firestore_client.collection('secretary_bot_v2').document('twitch_streaming').set({user_info['data'][0]['display_name']: False})
+            logger.info('----- update firestore twitch streaming -----')
+            firestore_client.collection('secretary_bot_v2').document('twitch_streaming').update({user_info['data'][0]['display_name']: False})
 
             logger.info('===== END set event subscription =====')
 
