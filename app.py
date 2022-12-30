@@ -4,7 +4,7 @@ import requests
 import logging
 import json
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 from slack_bolt import App
 from slack_bolt.adapter.flask import SlackRequestHandler
 from flask import Flask, request
@@ -56,7 +56,7 @@ def twitch(ack, say, command):
     try:
         validate_twitch_access_token()
 
-        logger.info('----- GET firestore -----')
+        logger.info('----- get firestore twitch token -----')
         doc_ref = firestore_client.collection('secretary_bot_v2').document('twitch')
 
         values = command['text'].split(' ')
@@ -246,6 +246,9 @@ def twitch(ack, say, command):
             say(payload)
             logger.info('----- END set stream.offline -----')
 
+            logger.info('----- set firestore twitch streaming -----')
+            firestore_client.collection('secretary_bot_v2').document('twitch_streaming').set({user_info['data'][0]['display_name']: False})
+
     except Exception as e:
         logger.error(e)
     finally:
@@ -353,7 +356,10 @@ def event_subscription_handler():
             color = '#'+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
 
             if request_json['subscription']['type'] == 'stream.online':
-                started_at = datetime.strptime(request_json['event']['started_at'], '%Y-%m-%dT%H:%M:%SZ').strftime('%m月%d日 %H時%M分')
+                logger.info('----- update firestore twitch streaming -----')
+                firestore_client.collection('secretary_bot_v2').document('twitch_streaming').update({user_info['data'][0]['display_name']: True})
+
+                started_at = (datetime.strptime(request_json['event']['started_at'], '%Y-%m-%dT%H:%M:%SZ') + timedelta(hours=9)).strftime('%m月%d日 %H時%M分')
 
                 attachment = [{
                     'color': color,
@@ -401,6 +407,12 @@ def event_subscription_handler():
                     ]
                 }]
             elif request_json['subscription']['type'] == 'channel.update':
+                logger.info('----- get firestore twitch streaming -----')
+                now_streaming = firestore_client.collection('secretary_bot_v2').document('twitch_streaming').get().to_dict()[user_info['data'][0]['display_name']]
+
+                if now_streaming == False:
+                    return
+
                 attachment = [{
                     'color': color,
                     'blocks': [
@@ -446,6 +458,10 @@ def event_subscription_handler():
                         }
                     ]
                 }]
+            elif request_json['subscription']['type'] == 'stream.offline':
+                logger.info('----- update firestore twitch streaming -----')
+                firestore_client.collection('secretary_bot_v2').document('twitch_streaming').update({user_info['data'][0]['display_name']: False})
+                return
 
             logger.info('----- POST slack api send chat message -----')
             payload = {
