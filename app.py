@@ -373,7 +373,7 @@ def event_subscription_handler():
                         'type': 'section',
                         'text': {
                             'type': 'mrkdwn',
-                            'text': '<https://www.twitch.tv/{}|Success {} stream.online event subscription !>'.format(user_info['data'][0]['login'], user_info['data'][0]['display_name'])
+                            'text': '<https://www.twitch.tv/{}|Success {} {} event subscription !>'.format(user_info['data'][0]['login'], request.get_json()['subscription']['type'], user_info['data'][0]['display_name'])
                         },
                         'accessory': {
                             'type': 'image',
