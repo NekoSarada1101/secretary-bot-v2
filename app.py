@@ -335,15 +335,15 @@ def event_subscription_handler():
 
             logger.info('----- get firestore twitch eventsub id -----')
             doc_ref_event = firestore_client.collection('secretary_bot_v2').document('twitch_eventsub')
-            if doc_ref_event.get().to_dict()['stream_online'] == request.get_json()['event']['id']:
+            if doc_ref_event.get().to_dict()[request_json['subscription']['type']] == request_json['subscription']['id']:
                 logger.info('===== SKIP event subscription handler =====')
                 return 'event subscription success!', 204
 
             logger.info('----- update firestore twitch eventsub id -----')
-            event_id = {
-                'stream_online': request.get_json()['event']['id'],
+            subscription_id = {
+                request_json['subscription']['type']: request_json['subscription']['id'],
             }
-            firestore_client.collection('secretary_bot_v2').document('twitch_eventsub').set(event_id)
+            firestore_client.collection('secretary_bot_v2').document('twitch_eventsub').update(subscription_id)
 
             logger.info('----- GET twitch api get user info -----')
             headers = {
