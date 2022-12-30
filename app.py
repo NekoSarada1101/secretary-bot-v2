@@ -309,7 +309,7 @@ def event_subscription_handler():
     logger.info('===== START event subscription handler =====')
     request_json = request.get_json()
     logger.info('request={}'.format(request_json))
-    logger.info('subscription type={}'.format(request_json['subscription']['type']))
+    logger.info('subscription_type={}'.format(request_json['subscription']['type']))
 
     try:
         validate_twitch_access_token()
@@ -324,7 +324,14 @@ def event_subscription_handler():
 
         if massage_type_notification == request.headers[massage_type]:
             logger.info('message_type={}'.format(massage_type_notification))
-            logger.info('request={}'.format(request.get_data()))
+
+            if request_json['subscription']['type'] == 'channel.update':
+                logger.info('----- get firestore twitch streaming -----')
+                now_streaming = firestore_client.collection('secretary_bot_v2').document('twitch_streaming').get().to_dict()[request_json['event']['broadcaster_user_login']]
+
+                if now_streaming == False:
+                    logger.info('===== SKIP event subscription handler =====')
+                    return 'event subscription success!', 204
 
             logger.info('----- get firestore twitch eventsub id -----')
             doc_ref_event = firestore_client.collection('secretary_bot_v2').document('twitch_eventsub')
@@ -410,12 +417,6 @@ def event_subscription_handler():
                     ]
                 }]
             elif request_json['subscription']['type'] == 'channel.update':
-                logger.info('----- get firestore twitch streaming -----')
-                now_streaming = firestore_client.collection('secretary_bot_v2').document('twitch_streaming').get().to_dict()[user_info['data'][0]['display_name']]
-
-                if now_streaming == False:
-                    return
-
                 attachment = [{
                     'color': color,
                     'blocks': [
