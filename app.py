@@ -247,7 +247,7 @@ def twitch(ack, say, command):
             logger.info('----- END set stream.offline -----')
 
             logger.info('----- update firestore twitch streaming -----')
-            firestore_client.collection('secretary_bot_v2').document('twitch_streaming').update({user_info['data'][0]['display_name']: False})
+            firestore_client.collection('secretary_bot_v2').document('twitch_streaming').update({user_info['data'][0]['login']: False})
 
             logger.info('===== END set event subscription =====')
 
@@ -360,7 +360,7 @@ def event_subscription_handler():
 
             if request_json['subscription']['type'] == 'stream.online':
                 logger.info('----- update firestore twitch streaming -----')
-                firestore_client.collection('secretary_bot_v2').document('twitch_streaming').update({user_info['data'][0]['display_name']: True})
+                firestore_client.collection('secretary_bot_v2').document('twitch_streaming').update({user_info['data'][0]['login']: True})
 
                 started_at = (datetime.strptime(request_json['event']['started_at'], '%Y-%m-%dT%H:%M:%SZ') + timedelta(hours=9)).strftime('%m月%d日 %H時%M分')
 
@@ -463,7 +463,7 @@ def event_subscription_handler():
                 }]
             elif request_json['subscription']['type'] == 'stream.offline':
                 logger.info('----- update firestore twitch streaming -----')
-                firestore_client.collection('secretary_bot_v2').document('twitch_streaming').update({user_info['data'][0]['display_name']: False})
+                firestore_client.collection('secretary_bot_v2').document('twitch_streaming').update({user_info['data'][0]['login']: False})
                 return
 
             logger.info('----- POST slack api send chat message -----')
