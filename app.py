@@ -151,12 +151,12 @@ def twitch(ack, say, command):
             logger.info('response={}'.format(user_info))
 
             logger.info('----- POST twitch api get app access token -----')
-            response = requests.post('https://id.twitch.tv/oauth2/token?client_id={}&client_secret={}&grant_type=client_credentials'.format(TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET))
-            logger.info('response={}'.format(response.text))
+            token_info = requests.post('https://id.twitch.tv/oauth2/token?client_id={}&client_secret={}&grant_type=client_credentials'.format(TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET))
+            logger.info('response={}'.format(token_info.text))
 
             logger.info('----- POST twitch api request stream.online event subscription -----')
             headers = {
-                'Authorization': 'Bearer {}'.format(response.json()['access_token']),
+                'Authorization': 'Bearer {}'.format(token_info.json()['access_token']),
                 'Client-Id': TWITCH_CLIENT_ID,
                 'Content-Type': 'application/json',
             }
@@ -187,7 +187,7 @@ def twitch(ack, say, command):
             logger.info('----- START set channel.update -----')
             logger.info('----- POST twitch api request channel.update event subscription -----')
             headers = {
-                'Authorization': 'Bearer {}'.format(response.json()['access_token']),
+                'Authorization': 'Bearer {}'.format(token_info.json()['access_token']),
                 'Client-Id': TWITCH_CLIENT_ID,
                 'Content-Type': 'application/json',
             }
@@ -218,7 +218,7 @@ def twitch(ack, say, command):
             logger.info('----- START set stream.offline -----')
             logger.info('----- POST twitch api request stream.offline event subscription -----')
             headers = {
-                'Authorization': 'Bearer {}'.format(response.json()['access_token']),
+                'Authorization': 'Bearer {}'.format(token_info.json()['access_token']),
                 'Client-Id': TWITCH_CLIENT_ID,
                 'Content-Type': 'application/json',
             }
@@ -248,6 +248,8 @@ def twitch(ack, say, command):
 
             logger.info('----- set firestore twitch streaming -----')
             firestore_client.collection('secretary_bot_v2').document('twitch_streaming').set({user_info['data'][0]['display_name']: False})
+
+            logger.info('===== END set event subscription =====')
 
     except Exception as e:
         logger.error(e)
