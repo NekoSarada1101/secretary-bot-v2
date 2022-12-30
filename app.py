@@ -140,7 +140,8 @@ def twitch(ack, say, command):
             say(payload)
 
         elif values[0] == 'sub':
-            logger.info('===== START set stream.online event subscription =====')
+            logger.info('===== START set event subscription =====')
+            logger.info('----- START set stream.online')
             logger.info('----- GET twitch api get user info -----')
             headers = {
                 'Authorization': 'Bearer {}'.format(doc_ref.get().to_dict()['oauth_access_token']),
@@ -173,6 +174,30 @@ def twitch(ack, say, command):
             }
             response = requests.post('https://api.twitch.tv/helix/eventsub/subscriptions', headers=headers, data=json.dumps(data))
             logger.info('response={}'.format(response.text))
+            logger.info('----- END set stream.online')
+
+            logger.info('----- START set channel.update')
+            logger.info('----- POST twitch api request channel.update event subscription -----')
+            headers = {
+                'Authorization': 'Bearer {}'.format(response.json()['access_token']),
+                'Client-Id': TWITCH_CLIENT_ID,
+                'Content-Type': 'application/json',
+            }
+            data = {
+                'type': 'channel.update',
+                'version': '1',
+                'condition': {
+                    'broadcaster_user_id': user_info['data'][0]['id']
+                },
+                'transport': {
+                    'method': 'webhook',
+                    'callback': os.environ.get('URL'),
+                    'secret': 'aaaaaaaaaa'
+                }
+            }
+            response = requests.post('https://api.twitch.tv/helix/eventsub/subscriptions', headers=headers, data=json.dumps(data))
+            logger.info('response={}'.format(response.text))
+            logger.info('----- END set channel.update')
 
             payload = {
                 'text': '{}さんのstream.onlineのevent subscriptionを要求しました。'.format(user_info['data'][0]['display_name']),
@@ -203,7 +228,7 @@ def validate():
 
 def validate_twitch_access_token():
     logger.info('===== START validate twitch access token =====')
-    logger.info('----- get firestore -----')
+    logger.info('----- get firestore twitch token -----')
     doc_ref = firestore_client.collection('secretary_bot_v2').document('twitch')
 
     logger.info('----- GET twitch api validate access token -----')
@@ -223,7 +248,7 @@ def validate_twitch_access_token():
         )
         logger.info('response={}'.format(response.text))
 
-        logger.info('----- update firestore -----')
+        logger.info('----- update firestore twitch token -----')
         response_json = response.json()
         token = {
             'oauth_access_token': response_json['access_token'],
@@ -238,14 +263,16 @@ def validate_twitch_access_token():
 def event_subscription_handler():
     logger.info('===== START event subscription handler =====')
     request_json = request.get_json()
+    logger.info('request={}'.format(request_json))
+    logger.info('subscription type={}'.format(request_json['subscription']['type']))
 
     try:
         validate_twitch_access_token()
 
-        logger.info('----- get firestore -----')
+        logger.info('----- get firestore twitch token -----')
         doc_ref = firestore_client.collection('secretary_bot_v2').document('twitch')
 
-        logger.info('----- check message type -----')
+        logger.info('----- check message type notification -----')
         massage_type = 'Twitch-Eventsub-Message-Type'
         massage_type_notification = 'notification'
         massage_type_verification = 'webhook_callback_verification'
@@ -254,13 +281,13 @@ def event_subscription_handler():
             logger.info('message_type={}'.format(massage_type_notification))
             logger.info('request={}'.format(request.get_data()))
 
-            logger.info('----- get firestore -----')
+            logger.info('----- get firestore twitch eventsub id -----')
             doc_ref_event = firestore_client.collection('secretary_bot_v2').document('twitch_eventsub')
             if doc_ref_event.get().to_dict()['stream_online'] == request.get_json()['event']['id']:
                 logger.info('===== SKIP event subscription handler =====')
                 return 'event subscription success!', 204
 
-            logger.info('----- update firestore -----')
+            logger.info('----- update firestore twitch eventsub id -----')
             event_id = {
                 'stream_online': request.get_json()['event']['id'],
             }
@@ -285,53 +312,101 @@ def event_subscription_handler():
             logger.info('response={}'.format(channel_info))
 
             color = '#'+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
-            started_at = datetime.strptime(request_json['event']['started_at'], '%Y-%m-%dT%H:%M:%SZ').strftime('%m月%d日 %H時%M分')
 
-            attachment = [{
-                'color': color,
-                'blocks': [
-                    {
-                        'type': 'section',
-                        'text': {
-                            'type': 'mrkdwn',
-                            'text': '*{}*'.format(request_json['event']['broadcaster_user_name'])
-                        }
-                    },
-                    {
-                        'type': 'section',
-                        'text': {
-                            'type': 'mrkdwn',
-                            'text': '<https://www.twitch.tv/{}|{}>'.format(request_json['event']['broadcaster_user_login'], channel_info['data'][0]['title'])
-                        }
-                    },
-                    {
-                        'type': 'section',
-                        'fields': [
-                            {
+            if request_json['subscription']['type'] == 'stream.online':
+                started_at = datetime.strptime(request_json['event']['started_at'], '%Y-%m-%dT%H:%M:%SZ').strftime('%m月%d日 %H時%M分')
+
+                attachment = [{
+                    'color': color,
+                    'blocks': [
+                        {
+                            'type': 'section',
+                            'text': {
                                 'type': 'mrkdwn',
-                                'text': '*Playing*'
-                            },
-                            {
-                                'type': 'mrkdwn',
-                                'text': '*Started at*'
-                            },
-                            {
-                                'type': 'mrkdwn',
-                                'text': channel_info['data'][0]['game_name']
-                            },
-                            {
-                                'type': 'mrkdwn',
-                                'text': started_at
+                                'text': '*{}*'.format(request_json['event']['broadcaster_user_name'])
                             }
-                        ],
-                        'accessory': {
-                            'type': 'image',
-                            'image_url': user_info['data'][0]['profile_image_url'],
-                            'alt_text': request_json['event']['broadcaster_user_name']
+                        },
+                        {
+                            'type': 'section',
+                            'text': {
+                                'type': 'mrkdwn',
+                                'text': '<https://www.twitch.tv/{}|{}>'.format(request_json['event']['broadcaster_user_login'], channel_info['data'][0]['title'])
+                            }
+                        },
+                        {
+                            'type': 'section',
+                            'fields': [
+                                {
+                                    'type': 'mrkdwn',
+                                    'text': '*Playing*'
+                                },
+                                {
+                                    'type': 'mrkdwn',
+                                    'text': '*Started at*'
+                                },
+                                {
+                                    'type': 'mrkdwn',
+                                    'text': channel_info['data'][0]['game_name']
+                                },
+                                {
+                                    'type': 'mrkdwn',
+                                    'text': started_at
+                                }
+                            ],
+                            'accessory': {
+                                'type': 'image',
+                                'image_url': user_info['data'][0]['profile_image_url'],
+                                'alt_text': request_json['event']['broadcaster_user_name']
+                            }
                         }
-                    }
-                ]
-            }]
+                    ]
+                }]
+            elif request_json['subscription']['type'] == 'channel.update':
+                attachment = [{
+                    'color': color,
+                    'blocks': [
+                        {
+                            'type': 'section',
+                            'text': {
+                                'type': 'mrkdwn',
+                                'text': '*{}*'.format(request_json['event']['broadcaster_user_name'])
+                            }
+                        },
+                        {
+                            'type': 'section',
+                            'text': {
+                                'type': 'mrkdwn',
+                                'text': '<https://www.twitch.tv/{}|{}>'.format(request_json['event']['broadcaster_user_login'], channel_info['data'][0]['title'])
+                            }
+                        },
+                        {
+                            'type': 'section',
+                            'fields': [
+                                {
+                                    'type': 'mrkdwn',
+                                    'text': '*Playing*'
+                                },
+                                {
+                                    'type': 'mrkdwn',
+                                    'text': '*Type*'
+                                },
+                                {
+                                    'type': 'mrkdwn',
+                                    'text': channel_info['data'][0]['game_name']
+                                },
+                                {
+                                    'type': 'mrkdwn',
+                                    'text': 'channel.update'
+                                }
+                            ],
+                            'accessory': {
+                                'type': 'image',
+                                'image_url': user_info['data'][0]['profile_image_url'],
+                                'alt_text': request_json['event']['broadcaster_user_name']
+                            }
+                        }
+                    ]
+                }]
 
             logger.info('----- POST slack api send chat message -----')
             payload = {
