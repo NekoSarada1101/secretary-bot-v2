@@ -4,6 +4,7 @@ import requests
 import logging
 import json
 import random
+import openai
 from datetime import datetime, timedelta
 from slack_bolt import App
 from slack_bolt.adapter.flask import SlackRequestHandler
@@ -548,6 +549,61 @@ def event_subscription_handler():
 def message_hello(message, say):
     logger.info('request={}'.format(message))
     say(f'Hey there <@{message["user"]}>!')
+
+
+@bolt_app.event("app_mention")
+def response_message(event, ack, say):
+    ack()
+    logger.info('===== START text-davinci-003 mention response =====')
+    logger.info('request={}'.format(event))
+
+    try:
+        logger.info('----- get openai chat response text')
+        openai.api_key = secret_client.access_secret_version(request={'name': 'projects/831232013080/secrets/OPENAI_API_KEY/versions/latest'}).payload.data.decode('UTF-8')
+
+        logger.info('----- get firestore openai chat history -----')
+        doc_ref_event = firestore_client.collection('secretary_bot_v2').document('openai')
+        history = doc_ref_event.get().to_dict()['history']
+
+        prompt = history + event['text'][14:].strip(' ')
+
+        response = openai.Completion.create(
+            model='text-davinci-003',
+            prompt=prompt,
+            temperature=0,  # ランダム性の制御[0-1]
+            max_tokens=1000,  # 返ってくるレスポンストークンの最大数
+            top_p=1.0,  # 多様性の制御[0-1]
+            frequency_penalty=1.0,  # 周波数制御[0-2]：高いと同じ話題を繰り返さなくなる
+            presence_penalty=1.0  # 新規トピック制御[0-2]：高いと新規のトピックが出現しやすくなる
+        )
+        logger.info('response={}'.format(response))
+        texts = ''.join([choice['text'] for choice in response.choices])
+
+        logger.info('----- update firestore openai chat history -----')
+        firestore_client.collection('secretary_bot_v2').document('openai').update({'history': prompt + texts + '\n\n'})
+
+        blocks = [
+            {
+                "type": "section",
+                "text": {
+                        "type": "mrkdwn",
+                        "text": '<@{}> {}'.format(event["user"], texts.strip('\n'))
+                }
+            }
+        ]
+
+        logger.info('----- slack send chat message -----')
+        payload = {
+            'blocks': blocks,
+            'icon_emoji': ':secretary:',
+        }
+        logger.info('payload={}'.format(payload))
+        say(payload)
+
+    except Exception as e:
+        logger.error(e)
+    finally:
+        logger.info('===== END text-davinci-003 mention response =====')
 
 
 @bolt_app.command('/test')
