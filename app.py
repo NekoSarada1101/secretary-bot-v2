@@ -606,6 +606,26 @@ def response_message(event, ack, say):
         logger.info('===== END text-davinci-003 mention response =====')
 
 
+@bolt_app.command('/openai')
+def test(ack, say, command):
+    ack()
+    logger.info('===== START slash command /openai =====')
+    logger.info('request={}'.format(command))
+
+    values = command['text'].split(' ')
+
+    try:
+        if values[0] == 'reset':
+            logger.info('----- update firestore openai chat history -----')
+            firestore_client.collection('secretary_bot_v2').document('openai').update({'history': ''})
+
+            say('reset openai chat history')
+    except Exception as e:
+        logger.error(e)
+    finally:
+        logger.info('===== END slash command /openai =====')
+
+
 @bolt_app.command('/test')
 def test(ack, say, command):
     ack()
