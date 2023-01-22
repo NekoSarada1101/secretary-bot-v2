@@ -469,7 +469,7 @@ def event_subscription_handler():
             elif request_json['subscription']['type'] == 'stream.offline':
                 logger.info('----- update firestore twitch streaming status -----')
                 firestore_client.collection('secretary_bot_v2').document('twitch_streaming').update({user_info['data'][0]['login']: False})
-                return
+                return 'event subscription success!', 204
 
             logger.info('----- POST slack api send chat message -----')
             payload = {
