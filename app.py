@@ -175,6 +175,7 @@ def twitch(ack, say, command):
             response = requests.post('https://api.twitch.tv/helix/eventsub/subscriptions', headers=headers, data=json.dumps(data))
             logger.info('response={}'.format(response.text))
 
+            logger.info('----- slack send chat message -----')
             payload = {
                 'text': '{}さんのstream.onlineのevent subscriptionを要求しました。'.format(user_info['data'][0]['display_name']),
                 'username': 'Twitch',
@@ -206,6 +207,7 @@ def twitch(ack, say, command):
             response = requests.post('https://api.twitch.tv/helix/eventsub/subscriptions', headers=headers, data=json.dumps(data))
             logger.info('response={}'.format(response.text))
 
+            logger.info('----- slack send chat message -----')
             payload = {
                 'text': '{}さんのchannel.updateのevent subscriptionを要求しました。'.format(user_info['data'][0]['display_name']),
                 'username': 'Twitch',
@@ -237,6 +239,7 @@ def twitch(ack, say, command):
             response = requests.post('https://api.twitch.tv/helix/eventsub/subscriptions', headers=headers, data=json.dumps(data))
             logger.info('response={}'.format(response.text))
 
+            logger.info('----- slack send chat message -----')
             payload = {
                 'text': '{}さんのstream.offlineのevent subscriptionを要求しました。'.format(user_info['data'][0]['display_name']),
                 'username': 'Twitch',
@@ -246,7 +249,7 @@ def twitch(ack, say, command):
             say(payload)
             logger.info('----- END set stream.offline -----')
 
-            logger.info('----- update firestore twitch streaming -----')
+            logger.info('----- update firestore twitch streaming status -----')
             firestore_client.collection('secretary_bot_v2').document('twitch_streaming').update({user_info['data'][0]['login']: False})
 
             logger.info('===== END set event subscription =====')
@@ -366,7 +369,7 @@ def event_subscription_handler():
             color = '#'+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
 
             if request_json['subscription']['type'] == 'stream.online':
-                logger.info('----- update firestore twitch streaming -----')
+                logger.info('----- update firestore twitch streaming status -----')
                 firestore_client.collection('secretary_bot_v2').document('twitch_streaming').update({user_info['data'][0]['login']: True})
 
                 started_at = (datetime.strptime(request_json['event']['started_at'], '%Y-%m-%dT%H:%M:%SZ') + timedelta(hours=9)).strftime('%m月%d日 %H時%M分')
@@ -463,7 +466,7 @@ def event_subscription_handler():
                     ]
                 }]
             elif request_json['subscription']['type'] == 'stream.offline':
-                logger.info('----- update firestore twitch streaming -----')
+                logger.info('----- update firestore twitch streaming status -----')
                 firestore_client.collection('secretary_bot_v2').document('twitch_streaming').update({user_info['data'][0]['login']: False})
                 return
 
