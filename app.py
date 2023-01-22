@@ -633,6 +633,11 @@ def test(ack, say, command):
     say('OK!')
 
 
+@bolt_app.event("message")  # ロギング
+def handle_message_events(body, logger):
+    logger.info(body)
+
+
 @flask_app.route('/', methods=['POST'])
 def index():
     logger.info('request={}'.format(request.get_data()))
