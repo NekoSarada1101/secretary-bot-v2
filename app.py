@@ -35,15 +35,17 @@ handler = SlackRequestHandler(bolt_app)
 # logger ===============================================
 global_log_fields = {}
 
-request_is_defined = "request" in globals() or "request" in locals()
-if request_is_defined and request:
-    trace_header = request.headers.get("X-Cloud-Trace-Context")
 
-    if trace_header and 'slackbot-288310':
-        trace = trace_header.split("/")
-        global_log_fields[
-            "logging.googleapis.com/trace"
-        ] = f"projects/slackbot-288310/traces/{trace[0]}"
+def get_trace_header(request):
+    request_is_defined = "request" in globals() or "request" in locals()
+    if request_is_defined and request:
+        trace_header = request.headers.get("X-Cloud-Trace-Context")
+
+        if trace_header and 'slackbot-288310':
+            trace = trace_header.split("/")
+            global_log_fields[
+                "logging.googleapis.com/trace"
+            ] = f"projects/slackbot-288310/traces/{trace[0]}"
 
 
 class JsonFormatter(logging.Formatter):
@@ -281,6 +283,8 @@ def twitch(ack, say, command):
 
 @ flask_app.route('/twitch/token/validate', methods=['POST'])
 def validate():
+    get_trace_header(request)
+
     logger.info('===== START check access token =====')
     logger.info('request={}'.format(request.get_data()))
     try:
@@ -327,6 +331,8 @@ def validate_twitch_access_token():
 
 @flask_app.route('/twitch/eventsub', methods=['POST'])
 def event_subscription_handler():
+    get_trace_header(request)
+
     logger.info('===== START event subscription handler =====')
     request_json = request.get_json()
     logger.info('request={}'.format(request_json))
@@ -625,6 +631,8 @@ def response_message(event, ack, say):
 
 @ flask_app.route('/gcp/notify_gcp_cost', methods=['POST'])
 def notify_gcp_cost():
+    get_trace_header(request)
+
     logger.info('===== START notify gcp cost =====')
     logger.info('request={}'.format(request.get_data()))
 
@@ -742,14 +750,14 @@ def handle_message_events(body, logger):
 
 @ flask_app.route('/', methods=['POST'])
 def index():
+    get_trace_header(request)
     logger.info('request={}'.format(request.get_data()))
     return 'Flask Test'
 
 
 @ flask_app.route('/slack/events', methods=['POST'])
 def slack_events():
-    logger.info('request_flask={}'.format(request.get_data()))
-    logger.info('trace_header={}'.format(request.headers.get("X-Cloud-Trace-Context")))
+    get_trace_header(request)
     return handler.handle(request)
 
 
