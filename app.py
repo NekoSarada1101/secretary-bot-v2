@@ -70,6 +70,8 @@ def twitch(ack, say, command):
     ack()
     logger.info('===== START slash command /twitch =====')
     logger.info('request={}'.format(command))
+    logger.info('request_flask={}'.format(request.get_data()))
+
 
     try:
         validate_twitch_access_token()
