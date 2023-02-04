@@ -70,8 +70,6 @@ def twitch(ack, say, command):
     ack()
     logger.info('===== START slash command /twitch =====')
     logger.info('request={}'.format(command))
-    logger.info('request_flask={}'.format(request.get_data()))
-
 
     try:
         validate_twitch_access_token()
@@ -750,6 +748,8 @@ def index():
 
 @ flask_app.route('/slack/events', methods=['POST'])
 def slack_events():
+    logger.info('request_flask={}'.format(request.get_data()))
+    logger.info('trace_header={}'.format(request.headers.get("X-Cloud-Trace-Context")))
     return handler.handle(request)
 
 
