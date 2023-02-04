@@ -27,8 +27,7 @@ GCP_NOTICE_SLACK_CHANNEL_ID = os.environ.get('GCP_NOTICE_SLACK_CHANNEL_ID')
 TABLE_ID = os.environ.get('TABLE_ID')
 
 flask_app = Flask(__name__)
-bolt_app = App(token=SLACK_BOT_TOKEN,
-               signing_secret=SLACK_SIGNING_SECRET)
+bolt_app = App(token=SLACK_BOT_TOKEN, signing_secret=SLACK_SIGNING_SECRET)
 handler = SlackRequestHandler(bolt_app)
 
 
@@ -71,7 +70,7 @@ logger.addHandler(stream)
 def twitch(ack, say, command):
     ack()
     logger.info('===== START slash command /twitch =====')
-    logger.info('request={}'.format(command))
+    logger.info(f'request={command}')
 
     try:
         validate_twitch_access_token()
@@ -85,19 +84,19 @@ def twitch(ack, say, command):
             logger.info('===== START get now on streaming list =====')
             logger.info('----- GET twitch api get follow list -----')
             headers = {
-                'Authorization': 'Bearer {}'.format(doc_ref.get().to_dict()['oauth_access_token']),
+                'Authorization': f'Bearer {doc_ref.get().to_dict()["oauth_access_token"]}',
                 'Client-Id': TWITCH_CLIENT_ID
             }
-            response = requests.get('https://api.twitch.tv/helix/streams/followed?user_id={}'.format(USER_ID), headers=headers)
-            logger.info('response={}'.format(response.text))
+            response = requests.get(f'https://api.twitch.tv/helix/streams/followed?user_id={USER_ID}', headers=headers)
+            logger.info(f'response={response.text}')
 
             response_json = response.json()
             attachments = []
 
             for res in response_json['data']:
                 logger.info('----- GET twitch api get user info -----')
-                user_info = requests.get('https://api.twitch.tv/helix/users?id={}'.format(res['user_id']), headers=headers).json()
-                logger.info('response={}'.format(user_info))
+                user_info = requests.get(f'https://api.twitch.tv/helix/users?id={res["user_id"]}', headers=headers).json()
+                logger.info(f'response={user_info}')
 
                 color = '#'+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
                 started_at = datetime.strptime(res['started_at'], '%Y-%m-%dT%H:%M:%SZ').strftime('%m月%d日 %H時%M分')
@@ -109,14 +108,14 @@ def twitch(ack, say, command):
                             'type': 'section',
                             'text': {
                                 'type': 'mrkdwn',
-                                'text': '*{}*'.format(res['user_name'])
+                                'text': f'*{res["user_name"]}*'
                             }
                         },
                         {
                             'type': 'section',
                             'text': {
                                 'type': 'mrkdwn',
-                                'text': '<https://www.twitch.tv/{}|{}>'.format(res['user_login'], res['title'])
+                                'text': f'<https://www.twitch.tv/{res["user_login"]}|{res["title"]}>'
                             }
                         },
                         {
@@ -156,7 +155,7 @@ def twitch(ack, say, command):
                 'username': 'Twitch',
                 'icon_emoji': ':twitch:',
             }
-            logger.info('payload={}'.format(payload))
+            logger.info(f'payload={payload}')
             say(payload)
 
         elif values[0] == 'sub':
@@ -164,19 +163,21 @@ def twitch(ack, say, command):
             logger.info('----- START set stream.online -----')
             logger.info('----- GET twitch api get user info -----')
             headers = {
-                'Authorization': 'Bearer {}'.format(doc_ref.get().to_dict()['oauth_access_token']),
+                'Authorization': f'Bearer {doc_ref.get().to_dict()["oauth_access_token"]}',
                 'Client-Id': TWITCH_CLIENT_ID
             }
-            user_info = requests.get('https://api.twitch.tv/helix/users?login={}'.format(values[1]), headers=headers).json()
-            logger.info('response={}'.format(user_info))
+            user_info = requests.get(f'https://api.twitch.tv/helix/users?login={values[1]}', headers=headers).json()
+            logger.info(f'response={user_info}')
 
             logger.info('----- POST twitch api get app access token -----')
-            token_info = requests.post('https://id.twitch.tv/oauth2/token?client_id={}&client_secret={}&grant_type=client_credentials'.format(TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET))
-            logger.info('response={}'.format(token_info.text))
+            token_info = requests.post(
+                f'https://id.twitch.tv/oauth2/token?client_id={TWITCH_CLIENT_ID}&client_secret={TWITCH_CLIENT_SECRET}&grant_type=client_credentials'
+            )
+            logger.info(f'response={token_info.text}')
 
             logger.info('----- POST twitch api request stream.online event subscription -----')
             headers = {
-                'Authorization': 'Bearer {}'.format(token_info.json()['access_token']),
+                'Authorization': f'Bearer {token_info.json()["access_token"]}',
                 'Client-Id': TWITCH_CLIENT_ID,
                 'Content-Type': 'application/json',
             }
@@ -193,22 +194,22 @@ def twitch(ack, say, command):
                 }
             }
             response = requests.post('https://api.twitch.tv/helix/eventsub/subscriptions', headers=headers, data=json.dumps(data))
-            logger.info('response={}'.format(response.text))
+            logger.info(f'response={response.text}')
 
             logger.info('----- slack send chat message -----')
             payload = {
-                'text': '{}さんのstream.onlineのevent subscriptionを要求しました。'.format(user_info['data'][0]['display_name']),
+                'text': f'{user_info["data"][0]["display_name"]}さんのstream.onlineのevent subscriptionを要求しました。',
                 'username': 'Twitch',
                 'icon_emoji': ':twitch:',
             }
-            logger.info('payload={}'.format(payload))
+            logger.info(f'payload={payload}')
             say(payload)
             logger.info('----- END set stream.online -----')
 
             logger.info('----- START set channel.update -----')
             logger.info('----- POST twitch api request channel.update event subscription -----')
             headers = {
-                'Authorization': 'Bearer {}'.format(token_info.json()['access_token']),
+                'Authorization': f'Bearer {token_info.json()["access_token"]}',
                 'Client-Id': TWITCH_CLIENT_ID,
                 'Content-Type': 'application/json',
             }
@@ -225,22 +226,22 @@ def twitch(ack, say, command):
                 }
             }
             response = requests.post('https://api.twitch.tv/helix/eventsub/subscriptions', headers=headers, data=json.dumps(data))
-            logger.info('response={}'.format(response.text))
+            logger.info(f'response={response.text}')
 
             logger.info('----- slack send chat message -----')
             payload = {
-                'text': '{}さんのchannel.updateのevent subscriptionを要求しました。'.format(user_info['data'][0]['display_name']),
+                'text': f'{user_info["data"][0]["display_name"]}さんのchannel.updateのevent subscriptionを要求しました。',
                 'username': 'Twitch',
                 'icon_emoji': ':twitch:',
             }
-            logger.info('payload={}'.format(payload))
+            logger.info(f'payload={payload}')
             say(payload)
             logger.info('----- END set channel.update -----')
 
             logger.info('----- START set stream.offline -----')
             logger.info('----- POST twitch api request stream.offline event subscription -----')
             headers = {
-                'Authorization': 'Bearer {}'.format(token_info.json()['access_token']),
+                'Authorization': f'Bearer {token_info.json()["access_token"]}',
                 'Client-Id': TWITCH_CLIENT_ID,
                 'Content-Type': 'application/json',
             }
@@ -257,15 +258,15 @@ def twitch(ack, say, command):
                 }
             }
             response = requests.post('https://api.twitch.tv/helix/eventsub/subscriptions', headers=headers, data=json.dumps(data))
-            logger.info('response={}'.format(response.text))
+            logger.info(f'response={response.text}')
 
             logger.info('----- slack send chat message -----')
             payload = {
-                'text': '{}さんのstream.offlineのevent subscriptionを要求しました。'.format(user_info['data'][0]['display_name']),
+                'text': f'{user_info["data"][0]["display_name"]}さんのstream.offlineのevent subscriptionを要求しました。',
                 'username': 'Twitch',
                 'icon_emoji': ':twitch:',
             }
-            logger.info('payload={}'.format(payload))
+            logger.info(f'payload={payload}')
             say(payload)
             logger.info('----- END set stream.offline -----')
 
@@ -286,7 +287,7 @@ def validate():
     get_trace_header(request)
 
     logger.info('===== START check access token =====')
-    logger.info('request={}'.format(request.get_data()))
+    logger.info(f'request={request.get_data()}')
     try:
         validate_twitch_access_token()
     except Exception as e:
@@ -303,20 +304,18 @@ def validate_twitch_access_token():
 
     logger.info('----- GET twitch api validate access token -----')
     headers = {
-        'Authorization': 'Bearer {}'.format(doc_ref.get().to_dict()['oauth_access_token'])
+        'Authorization': f'Bearer {doc_ref.get().to_dict()["oauth_access_token"]}'
     }
     response = requests.get('https://id.twitch.tv/oauth2/validate', headers=headers)
-    logger.info('response={}'.format(response.text))
+    logger.info(f'response={response.text}')
 
     if response.status_code == 401:
         logger.info('----- POST twitch api refresh access token -----')
-        response = requests.post('https://id.twitch.tv/oauth2/token?client_id={}&client_secret={}&grant_type=refresh_token&refresh_token={}'.format(
-            TWITCH_CLIENT_ID,
-            TWITCH_CLIENT_SECRET,
-            doc_ref.get().to_dict()['oauth_refresh_token']),
+        response = requests.post(
+            f'https://id.twitch.tv/oauth2/token?client_id={TWITCH_CLIENT_ID}&client_secret={TWITCH_CLIENT_SECRET}&grant_type=refresh_token&refresh_token={doc_ref.get().to_dict()["oauth_refresh_token"]}',
             headers={'Content-Type': 'application/x-www-form-urlencoded'}
         )
-        logger.info('response={}'.format(response.text))
+        logger.info(f'response={response.text}')
 
         logger.info('----- update firestore twitch token -----')
         response_json = response.json()
@@ -335,8 +334,8 @@ def event_subscription_handler():
 
     logger.info('===== START event subscription handler =====')
     request_json = request.get_json()
-    logger.info('request={}'.format(request_json))
-    logger.info('subscription_type={}'.format(request_json['subscription']['type']))
+    logger.info(f'request={request_json}')
+    logger.info(f'subscription_type={request_json["subscription"]["type"]}')
 
     try:
         validate_twitch_access_token()
@@ -350,7 +349,7 @@ def event_subscription_handler():
         massage_type_verification = 'webhook_callback_verification'
 
         if massage_type_notification == request.headers[massage_type]:
-            logger.info('message_type={}'.format(massage_type_notification))
+            logger.info(f'message_type={massage_type_notification}')
 
             if request_json['subscription']['type'] == 'channel.update':
                 logger.info('----- get firestore twitch streaming -----')
@@ -375,21 +374,18 @@ def event_subscription_handler():
 
             logger.info('----- GET twitch api get user info -----')
             headers = {
-                'Authorization': 'Bearer {}'.format(doc_ref.get().to_dict()['oauth_access_token']),
+                'Authorization': f'Bearer {doc_ref.get().to_dict()["oauth_access_token"]}',
                 'Client-Id': TWITCH_CLIENT_ID
             }
-            user_info = requests.get('https://api.twitch.tv/helix/users?id={}'.format(
-                request_json['event']['broadcaster_user_id']),
-                headers=headers
-            ).json()
-            logger.info('response={}'.format(user_info))
+            user_info = requests.get(f'https://api.twitch.tv/helix/users?id={request_json["event"]["broadcaster_user_id"]}', headers=headers).json()
+            logger.info(f'response={user_info}')
 
             logger.info('----- GET twitch api get channel info -----')
-            channel_info = requests.get('https://api.twitch.tv/helix/channels?broadcaster_id={}'.format(
-                request_json['event']['broadcaster_user_id']),
+            channel_info = requests.get(
+                f'https://api.twitch.tv/helix/channels?broadcaster_id={request_json["event"]["broadcaster_user_id"]}',
                 headers=headers
             ).json()
-            logger.info('response={}'.format(channel_info))
+            logger.info(f'response={channel_info}')
 
             color = '#'+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
 
@@ -406,14 +402,14 @@ def event_subscription_handler():
                             'type': 'section',
                             'text': {
                                 'type': 'mrkdwn',
-                                'text': '*{}*'.format(request_json['event']['broadcaster_user_name'])
+                                'text': f'*{request_json["event"]["broadcaster_user_name"]}*'
                             }
                         },
                         {
                             'type': 'section',
                             'text': {
                                 'type': 'mrkdwn',
-                                'text': '<https://www.twitch.tv/{}|{}>'.format(request_json['event']['broadcaster_user_login'], channel_info['data'][0]['title'])
+                                'text': f'<https://www.twitch.tv/{request_json["event"]["broadcaster_user_login"],}|{channel_info["data"][0]["title"]}>'
                             }
                         },
                         {
@@ -445,6 +441,8 @@ def event_subscription_handler():
                     ]
                 }]
             elif request_json['subscription']['type'] == 'channel.update':
+                updated_at = (datetime.now() + timedelta(hours=9)).strftime('%m月%d日 %H時%M分')
+
                 attachment = [{
                     'color': color,
                     'blocks': [
@@ -452,14 +450,14 @@ def event_subscription_handler():
                             'type': 'section',
                             'text': {
                                 'type': 'mrkdwn',
-                                'text': '*{}*'.format(request_json['event']['broadcaster_user_name'])
+                                'text': f'*{request_json["event"]["broadcaster_user_name"]}*'
                             }
                         },
                         {
                             'type': 'section',
                             'text': {
                                 'type': 'mrkdwn',
-                                'text': '<https://www.twitch.tv/{}|{}>'.format(request_json['event']['broadcaster_user_login'], channel_info['data'][0]['title'])
+                                'text': f'<https://www.twitch.tv/{request_json["event"]["broadcaster_user_login"]}|{channel_info["data"][0]["title"]}>'
                             }
                         },
                         {
@@ -471,7 +469,7 @@ def event_subscription_handler():
                                 },
                                 {
                                     'type': 'mrkdwn',
-                                    'text': '*Type*'
+                                    'text': '*Updated at*'
                                 },
                                 {
                                     'type': 'mrkdwn',
@@ -479,7 +477,7 @@ def event_subscription_handler():
                                 },
                                 {
                                     'type': 'mrkdwn',
-                                    'text': 'channel.update'
+                                    'text': updated_at
                                 }
                             ],
                             'accessory': {
@@ -499,32 +497,32 @@ def event_subscription_handler():
             payload = {
                 'token': SLACK_BOT_TOKEN,
                 'channel': TWITCH_SLACK_CHANNEL_ID,
-                'text': '{} now streaming {}'.format(request_json['event']['broadcaster_user_name'], channel_info['data'][0]['game_name']),
+                'text': f'{request_json["event"]["broadcaster_user_name"]} now streaming {channel_info["data"][0]["game_name"]}',
                 'attachments': json.dumps(attachment),
                 'username': 'Twitch',
                 'icon_emoji': ':twitch:',
             }
-            logger.info('payload={}'.format(payload))
+            logger.info(f'payload={payload}')
 
             response = requests.post('https://slack.com/api/chat.postMessage', data=payload)
-            logger.info('response={}'.format(response.text))
+            logger.info(f'response={response.text}')
 
             return 'event subscription success!', 204
 
         elif massage_type_verification == request.headers[massage_type]:
-            logger.info('message_type={}'.format(massage_type_verification))
-            logger.info('request={}'.format(request.get_data()))
+            logger.info(f'message_type={massage_type_verification}')
+            logger.info(f'request={request.get_data()}')
 
             logger.info('----- GET twitch api get user info -----')
             headers = {
-                'Authorization': 'Bearer {}'.format(doc_ref.get().to_dict()['oauth_access_token']),
+                'Authorization': f'Bearer {doc_ref.get().to_dict()["oauth_access_token"]}',
                 'Client-Id': TWITCH_CLIENT_ID
             }
-            user_info = requests.get('https://api.twitch.tv/helix/users?id={}'.format(
-                request.get_json()['subscription']['condition']['broadcaster_user_id']),
+            user_info = requests.get(
+                f'https://api.twitch.tv/helix/users?id={request.get_json()["subscription"]["condition"]["broadcaster_user_id"]}',
                 headers=headers
             ).json()
-            logger.info('response={}'.format(user_info))
+            logger.info(f'response={user_info}')
 
             logger.info('----- POST slack api send chat message -----')
             color = '#'+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
@@ -535,7 +533,7 @@ def event_subscription_handler():
                         'type': 'section',
                         'text': {
                             'type': 'mrkdwn',
-                            'text': '<https://www.twitch.tv/{}|Success {} {} event subscription !>'.format(user_info['data'][0]['login'], request.get_json()['subscription']['type'], user_info['data'][0]['display_name'])
+                            'text': f'<https://www.twitch.tv/{user_info["data"][0]["login"]}|Success {request.get_json()["subscription"]["type"]} {user_info["data"][0]["display_name"]} event subscription !>'
                         },
                         'accessory': {
                             'type': 'image',
@@ -554,10 +552,10 @@ def event_subscription_handler():
                 'username': 'Twitch',
                 'icon_emoji': ':twitch:',
             }
-            logger.info('payload={}'.format(payload))
+            logger.info(f'payload={payload}')
 
             response = requests.post('https://slack.com/api/chat.postMessage', data=payload)
-            logger.info('response={}'.format(response.text))
+            logger.info(f'response={response.text}')
 
             return request.get_json()['challenge'], 200
 
@@ -570,7 +568,7 @@ def event_subscription_handler():
 # =========================================================
 @bolt_app.message('hello')
 def message_hello(message, say):
-    logger.info('request={}'.format(message))
+    logger.info(f'request={message}')
     say(f'Hey there <@{message["user"]}>!')
 
 
@@ -578,7 +576,7 @@ def message_hello(message, say):
 def response_message(event, ack, say):
     ack()
     logger.info('===== START text-davinci-003 mention response =====')
-    logger.info('request={}'.format(event))
+    logger.info(f'request={event}')
 
     try:
         logger.info('----- get openai chat response text')
@@ -599,7 +597,7 @@ def response_message(event, ack, say):
             frequency_penalty=1.0,  # 周波数制御[0-2]：高いと同じ話題を繰り返さなくなる
             presence_penalty=1.0  # 新規トピック制御[0-2]：高いと新規のトピックが出現しやすくなる
         )
-        logger.info('response={}'.format(response))
+        logger.info(f'response={response}')
         texts = ''.join([choice['text'] for choice in response.choices])
 
         logger.info('----- update firestore openai chat history -----')
@@ -610,7 +608,7 @@ def response_message(event, ack, say):
                 "type": "section",
                 "text": {
                         "type": "mrkdwn",
-                        "text": '<@{}> {}'.format(event["user"], texts.strip('\n'))
+                        "text": f'<@{event["user"]}> {texts.strip("\n")}'
                 }
             }
         ]
@@ -620,7 +618,7 @@ def response_message(event, ack, say):
             'blocks': blocks,
             'icon_emoji': ':secretary:',
         }
-        logger.info('payload={}'.format(payload))
+        logger.info(f'payload={payload}')
         say(payload)
 
     except Exception as e:
@@ -634,42 +632,42 @@ def notify_gcp_cost():
     get_trace_header(request)
 
     logger.info('===== START notify gcp cost =====')
-    logger.info('request={}'.format(request.get_data()))
+    logger.info(f'request={request.get_data()}')
 
     try:
         logger.info('----- get bigquery gcp cost top 3 -----')
         yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
 
-        top_query = """
+        top_query = f"""
             SELECT service.description as service, sku.description as sku, SUM(cost) AS cost
-            FROM `{}`
-            WHERE project.id = 'slackbot-288310' AND FORMAT_DATE('%Y-%m-%d',usage_start_time) = '{}'
+            FROM `{TABLE_ID}`
+            WHERE project.id = 'slackbot-288310' AND FORMAT_DATE('%Y-%m-%d',usage_start_time) = '{yesterday}'
             GROUP BY service, sku
             HAVING cost != 0
             ORDER BY cost desc
             LIMIT 3
-        """.format(TABLE_ID, yesterday)
-        logger.info('top_query={}'.format(top_query))
+        """
+        logger.info(f'top_query={top_query}')
 
         query_job = bq_client.query(top_query)
         top_query_result = []
         for row in query_job:
             top_query_result.append({'service': row['service'], 'sku': row['sku'], 'cost': row['cost']})
-        logger.info('top_query_result={}'.format(top_query_result))
+        logger.info(f'top_query_result={top_query_result}')
 
         logger.info('----- get bigquery gcp cost total -----')
-        total_query = """
+        total_query = f"""
             SELECT SUM(cost) AS cost
-            FROM `{}`
-            WHERE project.id = 'slackbot-288310' AND FORMAT_DATE('%Y-%m-%d',usage_start_time) = '{}'
-        """.format(TABLE_ID, yesterday)
-        logger.info('top_query={}'.format(total_query))
+            FROM `{TABLE_ID}`
+            WHERE project.id = 'slackbot-288310' AND FORMAT_DATE('%Y-%m-%d',usage_start_time) = '{yesterday}'
+        """
+        logger.info(f'top_query={total_query}')
 
         query_job = bq_client.query(total_query)
         total_query_result = None
         for row in query_job:
             total_query_result = row['cost']
-        logger.info('total_query_result={}'.format(total_query_result))
+        logger.info(f'total_query_result={total_query_result}')
 
         logger.info('----- POST slack api send chat message -----')
         color = '#'+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
@@ -681,7 +679,7 @@ def notify_gcp_cost():
                     'type': 'section',
                     'text': {
                         'type': 'mrkdwn',
-                        'text': '*{} Total Cost*\n{} JPY'.format(yesterday, total_query_result)
+                        'text': f'*{yesterday} Total Cost*\n{total_query_result} JPY'
                     }
                 },
                 {
@@ -703,10 +701,10 @@ def notify_gcp_cost():
             'username': 'Notify GCP Cost',
             'icon_emoji': ':gcp:',
         }
-        logger.info('payload={}'.format(payload))
+        logger.info(f'payload={payload}')
 
         response = requests.post('https://slack.com/api/chat.postMessage', data=payload)
-        logger.info('response={}'.format(response.text))
+        logger.info(f'response={response.text}')
 
         return 'notify gcp cost success!', 204
 
@@ -720,7 +718,7 @@ def notify_gcp_cost():
 def openai(ack, say, command):
     ack()
     logger.info('===== START slash command /openai =====')
-    logger.info('request={}'.format(command))
+    logger.info(f'request={command}')
 
     values = command['text'].split(' ')
 
@@ -739,7 +737,7 @@ def openai(ack, say, command):
 @ bolt_app.command('/test')
 def test(ack, say, command):
     ack()
-    logger.info('request={}'.format(command))
+    logger.info(f'request={command}')
     say('OK!')
 
 
@@ -751,7 +749,7 @@ def handle_message_events(body, logger):
 @ flask_app.route('/', methods=['POST'])
 def index():
     get_trace_header(request)
-    logger.info('request={}'.format(request.get_data()))
+    logger.info(f'request={request.get_data()}')
     return 'Flask Test'
 
 
