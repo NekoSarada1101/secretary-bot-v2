@@ -33,11 +33,25 @@ handler = SlackRequestHandler(bolt_app)
 
 
 # logger ===============================================
+global_log_fields = {}
+
+request_is_defined = "request" in globals() or "request" in locals()
+if request_is_defined and request:
+    trace_header = request.headers.get("X-Cloud-Trace-Context")
+
+    if trace_header and 'slackbot-288310':
+        trace = trace_header.split("/")
+        global_log_fields[
+            "logging.googleapis.com/trace"
+        ] = f"projects/slackbot-288310/traces/{trace[0]}"
+
+
 class JsonFormatter(logging.Formatter):
     def format(self, log):
         return json.dumps({
             'level': log.levelname,
             'message': log.getMessage(),
+            **global_log_fields,
         })
 
 
