@@ -5,7 +5,7 @@ import logging
 import json
 import random
 import openai
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 from slack_bolt import App
 from slack_bolt.adapter.flask import SlackRequestHandler
 from flask import Flask, request
