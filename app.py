@@ -717,7 +717,7 @@ def notify_gcp_cost():
 
 
 @ bolt_app.command('/openai')
-def test(ack, say, command):
+def openai(ack, say, command):
     ack()
     logger.info('===== START slash command /openai =====')
     logger.info('request={}'.format(command))
