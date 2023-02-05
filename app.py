@@ -74,6 +74,17 @@ def get_firestore_twitch_token():
     return twitch_oauth_access_token, twitch_oauth_refresh_token
 
 
+def get_twitch_user_info(twitch_oauth_access_token, user_id):
+    logger.info('----- GET twitch api get user info -----')
+    headers = {
+        'Authorization': f'Bearer {twitch_oauth_access_token}',
+        'Client-Id': TWITCH_CLIENT_ID
+    }
+    user_info = requests.get(f'https://api.twitch.tv/helix/users?id={user_id}', headers=headers).json()
+    logger.info(f'response={user_info}')
+    return user_info
+
+
 @bolt_app.command('/twitch')
 def twitch(ack, say, command):
     ack()
@@ -100,9 +111,7 @@ def twitch(ack, say, command):
             attachments = []
 
             for res in response_json['data']:
-                logger.info('----- GET twitch api get user info -----')
-                user_info = requests.get(f'https://api.twitch.tv/helix/users?id={res["user_id"]}', headers=headers).json()
-                logger.info(f'response={user_info}')
+                user_info = get_twitch_user_info(twitch_oauth_access_token, user_id=res["user_id"])
 
                 color = '#'+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
                 started_at = datetime.strptime(res['started_at'], '%Y-%m-%dT%H:%M:%SZ').strftime('%m月%d日 %H時%M分')
@@ -323,13 +332,7 @@ def event_subscription_handler():
             }
             firestore_client.collection('secretary_bot_v2').document('twitch_eventsub').update(subscription_id)
 
-            logger.info('----- GET twitch api get user info -----')
-            headers = {
-                'Authorization': f'Bearer {twitch_oauth_access_token}',
-                'Client-Id': TWITCH_CLIENT_ID
-            }
-            user_info = requests.get(f'https://api.twitch.tv/helix/users?id={request_json["event"]["broadcaster_user_id"]}', headers=headers).json()
-            logger.info(f'response={user_info}')
+            user_info = get_twitch_user_info(twitch_oauth_access_token, user_id=request_json["event"]["broadcaster_user_id"])
 
             logger.info('----- GET twitch api get channel info -----')
             channel_info = requests.get(
@@ -468,16 +471,7 @@ def event_subscription_handler():
         elif massage_type_verification == request.headers[massage_type]:
             logger.info(f'message_type={massage_type_verification}')
 
-            logger.info('----- GET twitch api get user info -----')
-            headers = {
-                'Authorization': f'Bearer {twitch_oauth_access_token}',
-                'Client-Id': TWITCH_CLIENT_ID
-            }
-            user_info = requests.get(
-                f'https://api.twitch.tv/helix/users?id={request.get_json()["subscription"]["condition"]["broadcaster_user_id"]}',
-                headers=headers
-            ).json()
-            logger.info(f'response={user_info}')
+            user_info = get_twitch_user_info(twitch_oauth_access_token, user_id=request.get_json()["subscription"]["condition"]["broadcaster_user_id"])
 
             logger.info('----- POST slack api send chat message -----')
             color = '#'+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
