@@ -91,6 +91,23 @@ def twitch_api_header(twitch_token):
     return headers
 
 
+def post_slack_message(channel_id, text, attachments, username, icon_emoji):
+    logger.info('----- POST slack api send chat message -----')
+    payload = {
+        'token': SLACK_BOT_TOKEN,
+        'channel': channel_id,
+        'text': text,
+        'attachments': attachments,
+        'username': username,
+        'icon_emoji': icon_emoji,
+    }
+    logger.info(f'payload={payload}')
+
+    response = requests.post('https://slack.com/api/chat.postMessage', data=payload)
+    logger.info(f'response={response.text}')
+    return response
+
+
 @bolt_app.command('/twitch')
 def twitch(ack, say, command):
     ack()
@@ -449,19 +466,11 @@ def event_subscription_handler():
                 firestore_client.collection('secretary_bot_v2').document('twitch_streaming').update({user_info['data'][0]['login']: False})
                 return 'event subscription success!', 204
 
-            logger.info('----- POST slack api send chat message -----')
-            payload = {
-                'token': SLACK_BOT_TOKEN,
-                'channel': TWITCH_SLACK_CHANNEL_ID,
-                'text': f'{twitch_broadcaster_user_name} now streaming {twitch_game_name}',
-                'attachments': json.dumps(attachment),
-                'username': 'Twitch',
-                'icon_emoji': ':twitch:',
-            }
-            logger.info(f'payload={payload}')
-
-            response = requests.post('https://slack.com/api/chat.postMessage', data=payload)
-            logger.info(f'response={response.text}')
+            post_slack_message(TWITCH_SLACK_CHANNEL_ID,
+                               text=f'{twitch_broadcaster_user_name} now streaming {twitch_game_name}',
+                               attachments=json.dumps(attachment),
+                               username='Twitch',
+                               icon_emoji=':twitch:')
 
             return 'event subscription success!', 204
 
@@ -470,7 +479,6 @@ def event_subscription_handler():
 
             user_info = get_twitch_user_info(twitch_oauth_access_token, user_id=request.get_json()["subscription"]["condition"]["broadcaster_user_id"])
 
-            logger.info('----- POST slack api send chat message -----')
             color = '#'+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
             twitch_user_login = user_info['data'][0]['login']
             twitch_profile_image_url = user_info['data'][0]['profile_image_url']
@@ -494,18 +502,11 @@ def event_subscription_handler():
                 ]
             }]
 
-            payload = {
-                'token': SLACK_BOT_TOKEN,
-                'channel': TWITCH_SLACK_CHANNEL_ID,
-                'text': 'Event Subscription',
-                'attachments': json.dumps(attachment),
-                'username': 'Twitch',
-                'icon_emoji': ':twitch:',
-            }
-            logger.info(f'payload={payload}')
-
-            response = requests.post('https://slack.com/api/chat.postMessage', data=payload)
-            logger.info(f'response={response.text}')
+            post_slack_message(TWITCH_SLACK_CHANNEL_ID,
+                               text='Event Subscription',
+                               attachments=json.dumps(attachment),
+                               username='Twitch',
+                               icon_emoji=':twitch:')
 
             return request.get_json()['challenge'], 200
 
@@ -620,7 +621,6 @@ def notify_gcp_cost():
             total_query_result = row['cost']
         logger.info(f'total_query_result={total_query_result}')
 
-        logger.info('----- POST slack api send chat message -----')
         color = '#'+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
 
         attachment = [{
@@ -644,18 +644,11 @@ def notify_gcp_cost():
             ]
         }]
 
-        payload = {
-            'token': SLACK_BOT_TOKEN,
-            'channel': GCP_NOTICE_SLACK_CHANNEL_ID,
-            'text': 'Notify Today GCP Cost',
-            'attachments': json.dumps(attachment),
-            'username': 'Notify GCP Cost',
-            'icon_emoji': ':gcp:',
-        }
-        logger.info(f'payload={payload}')
-
-        response = requests.post('https://slack.com/api/chat.postMessage', data=payload)
-        logger.info(f'response={response.text}')
+        post_slack_message(GCP_NOTICE_SLACK_CHANNEL_ID,
+                           text='Notify Today GCP Cost',
+                           attachments=json.dumps(attachment),
+                           username='Notify GCP Cost',
+                           icon_emoji=':gcp:')
 
         return 'notify gcp cost success!', 204
 
