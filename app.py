@@ -599,6 +599,7 @@ def response_message(event, ack, say):
         )
         logger.info(f'response={response}')
         texts = ''.join([choice['text'] for choice in response.choices])
+        texts = texts.strip("\n")
 
         logger.info('----- update firestore openai chat history -----')
         firestore_client.collection('secretary_bot_v2').document('openai').update({'history': prompt + texts + '\n\n'})
@@ -608,7 +609,7 @@ def response_message(event, ack, say):
                 "type": "section",
                 "text": {
                         "type": "mrkdwn",
-                        "text": f'<@{event["user"]}> {texts.strip("\n")}'
+                        "text": fr'<@{event["user"]}> {texts}'
                 }
             }
         ]
