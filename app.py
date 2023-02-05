@@ -77,6 +77,7 @@ def twitch(ack, say, command):
 
         logger.info('----- get firestore twitch token -----')
         doc_ref = firestore_client.collection('secretary_bot_v2').document('twitch')
+        twitch_oauth_access_token = doc_ref.get().to_dict()["oauth_access_token"]
 
         values = command['text'].split(' ')
 
@@ -84,7 +85,7 @@ def twitch(ack, say, command):
             logger.info('===== START get now on streaming list =====')
             logger.info('----- GET twitch api get follow list -----')
             headers = {
-                'Authorization': f'Bearer {doc_ref.get().to_dict()["oauth_access_token"]}',
+                'Authorization': f'Bearer {twitch_oauth_access_token}',
                 'Client-Id': TWITCH_CLIENT_ID
             }
             response = requests.get(f'https://api.twitch.tv/helix/streams/followed?user_id={USER_ID}', headers=headers)
@@ -160,10 +161,9 @@ def twitch(ack, say, command):
 
         elif values[0] == 'sub':
             logger.info('===== START set event subscription =====')
-            logger.info('----- START set stream.online -----')
             logger.info('----- GET twitch api get user info -----')
             headers = {
-                'Authorization': f'Bearer {doc_ref.get().to_dict()["oauth_access_token"]}',
+                'Authorization': f'Bearer {twitch_oauth_access_token}',
                 'Client-Id': TWITCH_CLIENT_ID
             }
             user_info = requests.get(f'https://api.twitch.tv/helix/users?login={values[1]}', headers=headers).json()
@@ -175,104 +175,12 @@ def twitch(ack, say, command):
             )
             logger.info(f'response={token_info.text}')
 
-            logger.info('----- POST twitch api request stream.online event subscription -----')
-            headers = {
-                'Authorization': f'Bearer {token_info.json()["access_token"]}',
-                'Client-Id': TWITCH_CLIENT_ID,
-                'Content-Type': 'application/json',
-            }
-            data = {
-                'type': 'stream.online',
-                'version': '1',
-                'condition': {
-                    'broadcaster_user_id': user_info['data'][0]['id']
-                },
-                'transport': {
-                    'method': 'webhook',
-                    'callback': os.environ.get('URL'),
-                    'secret': 'aaaaaaaaaa'
-                }
-            }
-            response = requests.post('https://api.twitch.tv/helix/eventsub/subscriptions', headers=headers, data=json.dumps(data))
-            logger.info(f'response={response.text}')
-
-            logger.info('----- slack send chat message -----')
-            payload = {
-                'text': f'{user_info["data"][0]["display_name"]}さんのstream.onlineのevent subscriptionを要求しました。',
-                'username': 'Twitch',
-                'icon_emoji': ':twitch:',
-            }
-            logger.info(f'payload={payload}')
-            say(payload)
-            logger.info('----- END set stream.online -----')
-
-            logger.info('----- START set channel.update -----')
-            logger.info('----- POST twitch api request channel.update event subscription -----')
-            headers = {
-                'Authorization': f'Bearer {token_info.json()["access_token"]}',
-                'Client-Id': TWITCH_CLIENT_ID,
-                'Content-Type': 'application/json',
-            }
-            data = {
-                'type': 'channel.update',
-                'version': '1',
-                'condition': {
-                    'broadcaster_user_id': user_info['data'][0]['id']
-                },
-                'transport': {
-                    'method': 'webhook',
-                    'callback': os.environ.get('URL'),
-                    'secret': 'aaaaaaaaaa'
-                }
-            }
-            response = requests.post('https://api.twitch.tv/helix/eventsub/subscriptions', headers=headers, data=json.dumps(data))
-            logger.info(f'response={response.text}')
-
-            logger.info('----- slack send chat message -----')
-            payload = {
-                'text': f'{user_info["data"][0]["display_name"]}さんのchannel.updateのevent subscriptionを要求しました。',
-                'username': 'Twitch',
-                'icon_emoji': ':twitch:',
-            }
-            logger.info(f'payload={payload}')
-            say(payload)
-            logger.info('----- END set channel.update -----')
-
-            logger.info('----- START set stream.offline -----')
-            logger.info('----- POST twitch api request stream.offline event subscription -----')
-            headers = {
-                'Authorization': f'Bearer {token_info.json()["access_token"]}',
-                'Client-Id': TWITCH_CLIENT_ID,
-                'Content-Type': 'application/json',
-            }
-            data = {
-                'type': 'stream.offline',
-                'version': '1',
-                'condition': {
-                    'broadcaster_user_id': user_info['data'][0]['id']
-                },
-                'transport': {
-                    'method': 'webhook',
-                    'callback': os.environ.get('URL'),
-                    'secret': 'aaaaaaaaaa'
-                }
-            }
-            response = requests.post('https://api.twitch.tv/helix/eventsub/subscriptions', headers=headers, data=json.dumps(data))
-            logger.info(f'response={response.text}')
-
-            logger.info('----- slack send chat message -----')
-            payload = {
-                'text': f'{user_info["data"][0]["display_name"]}さんのstream.offlineのevent subscriptionを要求しました。',
-                'username': 'Twitch',
-                'icon_emoji': ':twitch:',
-            }
-            logger.info(f'payload={payload}')
-            say(payload)
-            logger.info('----- END set stream.offline -----')
+            set_twitch_subscription('channel.online', user_info, token_info, say)
+            set_twitch_subscription('channel.update', user_info, token_info, say)
+            set_twitch_subscription('channel.offline', user_info, token_info, say)
 
             logger.info('----- update firestore twitch streaming status -----')
             firestore_client.collection('secretary_bot_v2').document('twitch_streaming').update({user_info['data'][0]['login']: False})
-
             logger.info('===== END set event subscription =====')
 
     except Exception as e:
@@ -280,6 +188,40 @@ def twitch(ack, say, command):
         say('エラーが発生しました。ログを確認してください。')
     finally:
         logger.info('===== END slash command /twitch =====')
+
+
+def set_twitch_subscription(sub_type, user_info, token_info, say):
+    logger.info(f'----- START set {sub_type} -----')
+    logger.info(f'----- POST twitch api request {sub_type} event subscription -----')
+    headers = {
+        'Authorization': f'Bearer {token_info.json()["access_token"]}',
+        'Client-Id': TWITCH_CLIENT_ID,
+        'Content-Type': 'application/json',
+    }
+    data = {
+        'type': sub_type,
+        'version': '1',
+        'condition': {
+            'broadcaster_user_id': user_info['data'][0]['id']
+        },
+        'transport': {
+            'method': 'webhook',
+            'callback': os.environ.get('URL'),
+            'secret': 'aaaaaaaaaa'
+        }
+    }
+    response = requests.post('https://api.twitch.tv/helix/eventsub/subscriptions', headers=headers, data=json.dumps(data))
+    logger.info(f'response={response.text}')
+
+    logger.info('----- slack send chat message -----')
+    payload = {
+        'text': f'{user_info["data"][0]["display_name"]}さんの{sub_type}のevent subscriptionを要求しました。',
+        'username': 'Twitch',
+        'icon_emoji': ':twitch:',
+    }
+    logger.info(f'payload={payload}')
+    say(payload)
+    logger.info(f'----- END set {sub_type} -----')
 
 
 @ flask_app.route('/twitch/token/validate', methods=['POST'])
@@ -301,10 +243,12 @@ def validate_twitch_access_token():
     logger.info('===== START validate twitch access token =====')
     logger.info('----- get firestore twitch token -----')
     doc_ref = firestore_client.collection('secretary_bot_v2').document('twitch')
+    twitch_oauth_access_token = doc_ref.get().to_dict()['oauth_access_token']
+    twitch_oauth_refresh_token = doc_ref.get().to_dict()["oauth_refresh_token"]
 
     logger.info('----- GET twitch api validate access token -----')
     headers = {
-        'Authorization': f'Bearer {doc_ref.get().to_dict()["oauth_access_token"]}'
+        'Authorization': f'Bearer {twitch_oauth_access_token}'
     }
     response = requests.get('https://id.twitch.tv/oauth2/validate', headers=headers)
     logger.info(f'response={response.text}')
@@ -312,7 +256,7 @@ def validate_twitch_access_token():
     if response.status_code == 401:
         logger.info('----- POST twitch api refresh access token -----')
         response = requests.post(
-            f'https://id.twitch.tv/oauth2/token?client_id={TWITCH_CLIENT_ID}&client_secret={TWITCH_CLIENT_SECRET}&grant_type=refresh_token&refresh_token={doc_ref.get().to_dict()["oauth_refresh_token"]}',
+            f'https://id.twitch.tv/oauth2/token?client_id={TWITCH_CLIENT_ID}&client_secret={TWITCH_CLIENT_SECRET}&grant_type=refresh_token&refresh_token={twitch_oauth_refresh_token}',
             headers={'Content-Type': 'application/x-www-form-urlencoded'}
         )
         logger.info(f'response={response.text}')
@@ -333,15 +277,19 @@ def event_subscription_handler():
     get_trace_header(request)
 
     logger.info('===== START event subscription handler =====')
-    request_json = request.get_json()
-    logger.info(f'request={request_json}')
-    logger.info(f'subscription_type={request_json["subscription"]["type"]}')
 
     try:
+        request_json = request.get_json()
+        logger.info(f'request={request_json}')
+
+        twitch_subscription_type = request_json["subscription"]["type"]
+        logger.info(f'subscription_type={twitch_subscription_type}')
+
         validate_twitch_access_token()
 
         logger.info('----- get firestore twitch token -----')
         doc_ref = firestore_client.collection('secretary_bot_v2').document('twitch')
+        twitch_oauth_access_token = doc_ref.get().to_dict()["oauth_access_token"]
 
         logger.info('----- check message type notification -----')
         massage_type = 'Twitch-Eventsub-Message-Type'
@@ -351,9 +299,10 @@ def event_subscription_handler():
         if massage_type_notification == request.headers[massage_type]:
             logger.info(f'message_type={massage_type_notification}')
 
-            if request_json['subscription']['type'] == 'channel.update':
+            twitch_broadcaster_user_login = request_json['event']['broadcaster_user_login']
+            if twitch_subscription_type == 'channel.update':
                 logger.info('----- get firestore twitch streaming -----')
-                now_streaming = firestore_client.collection('secretary_bot_v2').document('twitch_streaming').get().to_dict()[request_json['event']['broadcaster_user_login']]
+                now_streaming = firestore_client.collection('secretary_bot_v2').document('twitch_streaming').get().to_dict()[twitch_broadcaster_user_login]
 
                 if now_streaming == False:
                     logger.info('===== SKIP event subscription handler =====')
@@ -361,20 +310,21 @@ def event_subscription_handler():
 
             logger.info('----- get firestore twitch eventsub id -----')
             doc_ref_event = firestore_client.collection('secretary_bot_v2').document('twitch_eventsub')
-            subscription_type = request_json['subscription']['type'].replace('.', '_')
-            if doc_ref_event.get().to_dict()[subscription_type] == request_json['subscription']['id']:
+            converted_twitch_subscription_type = request_json['subscription']['type'].replace('.', '_')
+            twitch_subscription_id = request_json['subscription']['id']
+            if doc_ref_event.get().to_dict()[converted_twitch_subscription_type] == twitch_subscription_id:
                 logger.info('===== SKIP event subscription handler =====')
                 return 'event subscription success!', 204
 
             logger.info('----- update firestore twitch eventsub id -----')
             subscription_id = {
-                subscription_type: request_json['subscription']['id'],
+                converted_twitch_subscription_type: twitch_subscription_id,
             }
             firestore_client.collection('secretary_bot_v2').document('twitch_eventsub').update(subscription_id)
 
             logger.info('----- GET twitch api get user info -----')
             headers = {
-                'Authorization': f'Bearer {doc_ref.get().to_dict()["oauth_access_token"]}',
+                'Authorization': f'Bearer {twitch_oauth_access_token}',
                 'Client-Id': TWITCH_CLIENT_ID
             }
             user_info = requests.get(f'https://api.twitch.tv/helix/users?id={request_json["event"]["broadcaster_user_id"]}', headers=headers).json()
@@ -388,10 +338,15 @@ def event_subscription_handler():
             logger.info(f'response={channel_info}')
 
             color = '#'+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
+            twitch_broadcaster_user_name = request_json['event']['broadcaster_user_name']
+            twitch_channel_title = channel_info['data'][0]['title']
+            twitch_game_name = channel_info['data'][0]['game_name']
+            twitch_profile_image_url = user_info['data'][0]['profile_image_url']
 
             if request_json['subscription']['type'] == 'stream.online':
                 logger.info('----- update firestore twitch streaming status -----')
-                firestore_client.collection('secretary_bot_v2').document('twitch_streaming').update({user_info['data'][0]['login']: True})
+                twitch_user_login = user_info['data'][0]['login']
+                firestore_client.collection('secretary_bot_v2').document('twitch_streaming').update({twitch_user_login: True})
 
                 started_at = (datetime.strptime(request_json['event']['started_at'], '%Y-%m-%dT%H:%M:%SZ') + timedelta(hours=9)).strftime('%m月%d日 %H時%M分')
 
@@ -402,14 +357,14 @@ def event_subscription_handler():
                             'type': 'section',
                             'text': {
                                 'type': 'mrkdwn',
-                                'text': f'*{request_json["event"]["broadcaster_user_name"]}*'
+                                'text': f'*{twitch_broadcaster_user_name}*'
                             }
                         },
                         {
                             'type': 'section',
                             'text': {
                                 'type': 'mrkdwn',
-                                'text': f'<https://www.twitch.tv/{request_json["event"]["broadcaster_user_login"],}|{channel_info["data"][0]["title"]}>'
+                                'text': f'<https://www.twitch.tv/{twitch_broadcaster_user_login}|{twitch_channel_title}>'
                             }
                         },
                         {
@@ -425,7 +380,7 @@ def event_subscription_handler():
                                 },
                                 {
                                     'type': 'mrkdwn',
-                                    'text': channel_info['data'][0]['game_name']
+                                    'text': twitch_game_name
                                 },
                                 {
                                     'type': 'mrkdwn',
@@ -434,8 +389,8 @@ def event_subscription_handler():
                             ],
                             'accessory': {
                                 'type': 'image',
-                                'image_url': user_info['data'][0]['profile_image_url'],
-                                'alt_text': request_json['event']['broadcaster_user_name']
+                                'image_url': twitch_profile_image_url,
+                                'alt_text': twitch_broadcaster_user_name
                             }
                         }
                     ]
@@ -450,14 +405,14 @@ def event_subscription_handler():
                             'type': 'section',
                             'text': {
                                 'type': 'mrkdwn',
-                                'text': f'*{request_json["event"]["broadcaster_user_name"]}*'
+                                'text': f'*{twitch_broadcaster_user_name}*'
                             }
                         },
                         {
                             'type': 'section',
                             'text': {
                                 'type': 'mrkdwn',
-                                'text': f'<https://www.twitch.tv/{request_json["event"]["broadcaster_user_login"]}|{channel_info["data"][0]["title"]}>'
+                                'text': f'<https://www.twitch.tv/{twitch_broadcaster_user_login}|{twitch_channel_title}>'
                             }
                         },
                         {
@@ -473,7 +428,7 @@ def event_subscription_handler():
                                 },
                                 {
                                     'type': 'mrkdwn',
-                                    'text': channel_info['data'][0]['game_name']
+                                    'text': twitch_game_name
                                 },
                                 {
                                     'type': 'mrkdwn',
@@ -482,8 +437,8 @@ def event_subscription_handler():
                             ],
                             'accessory': {
                                 'type': 'image',
-                                'image_url': user_info['data'][0]['profile_image_url'],
-                                'alt_text': request_json['event']['broadcaster_user_name']
+                                'image_url': twitch_profile_image_url,
+                                'alt_text': twitch_broadcaster_user_name
                             }
                         }
                     ]
@@ -497,7 +452,7 @@ def event_subscription_handler():
             payload = {
                 'token': SLACK_BOT_TOKEN,
                 'channel': TWITCH_SLACK_CHANNEL_ID,
-                'text': f'{request_json["event"]["broadcaster_user_name"]} now streaming {channel_info["data"][0]["game_name"]}',
+                'text': f'{twitch_broadcaster_user_name} now streaming {twitch_game_name}',
                 'attachments': json.dumps(attachment),
                 'username': 'Twitch',
                 'icon_emoji': ':twitch:',
@@ -511,11 +466,10 @@ def event_subscription_handler():
 
         elif massage_type_verification == request.headers[massage_type]:
             logger.info(f'message_type={massage_type_verification}')
-            logger.info(f'request={request.get_data()}')
 
             logger.info('----- GET twitch api get user info -----')
             headers = {
-                'Authorization': f'Bearer {doc_ref.get().to_dict()["oauth_access_token"]}',
+                'Authorization': f'Bearer {twitch_oauth_access_token}',
                 'Client-Id': TWITCH_CLIENT_ID
             }
             user_info = requests.get(
@@ -526,6 +480,10 @@ def event_subscription_handler():
 
             logger.info('----- POST slack api send chat message -----')
             color = '#'+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
+            twitch_user_login = user_info['data'][0]['login']
+            twitch_profile_image_url = user_info['data'][0]['profile_image_url']
+            twitch_user_display_name = user_info['data'][0]['display_name']
+
             attachment = [{
                 'color': color,
                 'blocks': [
@@ -533,11 +491,11 @@ def event_subscription_handler():
                         'type': 'section',
                         'text': {
                             'type': 'mrkdwn',
-                            'text': f'<https://www.twitch.tv/{user_info["data"][0]["login"]}|Success {request.get_json()["subscription"]["type"]} {user_info["data"][0]["display_name"]} event subscription !>'
+                            'text': f'<https://www.twitch.tv/{twitch_user_login}|Success {twitch_subscription_type} {twitch_user_display_name} event subscription !>'
                         },
                         'accessory': {
                             'type': 'image',
-                            'image_url': user_info['data'][0]['profile_image_url'],
+                            'image_url': twitch_profile_image_url,
                             'alt_text': user_info['data'][0]['display_name']
                         }
                     },
