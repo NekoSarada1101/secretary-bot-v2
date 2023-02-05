@@ -76,13 +76,19 @@ def get_firestore_twitch_token():
 
 def get_twitch_user_info(twitch_oauth_access_token, user_id):
     logger.info('----- GET twitch api get user info -----')
-    headers = {
-        'Authorization': f'Bearer {twitch_oauth_access_token}',
-        'Client-Id': TWITCH_CLIENT_ID
-    }
+    headers = twitch_api_header(twitch_oauth_access_token)
     user_info = requests.get(f'https://api.twitch.tv/helix/users?id={user_id}', headers=headers).json()
     logger.info(f'response={user_info}')
     return user_info
+
+
+def twitch_api_header(twitch_token):
+    headers = {
+        'Authorization': f'Bearer {twitch_token}',
+        'Client-Id': TWITCH_CLIENT_ID,
+        'Content-Type': 'application/json',
+    }
+    return headers
 
 
 @bolt_app.command('/twitch')
@@ -100,10 +106,7 @@ def twitch(ack, say, command):
         if values[0] == 'now':
             logger.info('===== START get now on streaming list =====')
             logger.info('----- GET twitch api get follow list -----')
-            headers = {
-                'Authorization': f'Bearer {twitch_oauth_access_token}',
-                'Client-Id': TWITCH_CLIENT_ID
-            }
+            headers = twitch_api_header(twitch_oauth_access_token)
             response = requests.get(f'https://api.twitch.tv/helix/streams/followed?user_id={USER_ID}', headers=headers)
             logger.info(f'response={response.text}')
 
@@ -176,10 +179,7 @@ def twitch(ack, say, command):
         elif values[0] == 'sub':
             logger.info('===== START set event subscription =====')
             logger.info('----- GET twitch api get user info -----')
-            headers = {
-                'Authorization': f'Bearer {twitch_oauth_access_token}',
-                'Client-Id': TWITCH_CLIENT_ID
-            }
+            headers = twitch_api_header(twitch_oauth_access_token)
             user_info = requests.get(f'https://api.twitch.tv/helix/users?login={values[1]}', headers=headers).json()
             logger.info(f'response={user_info}')
 
@@ -207,11 +207,7 @@ def twitch(ack, say, command):
 def set_twitch_subscription(sub_type, user_info, token_info, say):
     logger.info(f'----- START set {sub_type} -----')
     logger.info(f'----- POST twitch api request {sub_type} event subscription -----')
-    headers = {
-        'Authorization': f'Bearer {token_info.json()["access_token"]}',
-        'Client-Id': TWITCH_CLIENT_ID,
-        'Content-Type': 'application/json',
-    }
+    headers = twitch_api_header(token_info.json()["access_token"])
     data = {
         'type': sub_type,
         'version': '1',
@@ -335,6 +331,7 @@ def event_subscription_handler():
             user_info = get_twitch_user_info(twitch_oauth_access_token, user_id=request_json["event"]["broadcaster_user_id"])
 
             logger.info('----- GET twitch api get channel info -----')
+            headers = twitch_api_header(twitch_oauth_access_token)
             channel_info = requests.get(
                 f'https://api.twitch.tv/helix/channels?broadcaster_id={request_json["event"]["broadcaster_user_id"]}',
                 headers=headers
