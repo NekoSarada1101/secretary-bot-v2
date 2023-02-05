@@ -66,6 +66,14 @@ logger.addHandler(stream)
 
 
 # functions ==========================================
+def get_firestore_twitch_token():
+    logger.info('----- get firestore twitch token -----')
+    doc_ref = firestore_client.collection('secretary_bot_v2').document('twitch')
+    twitch_oauth_access_token = doc_ref.get().to_dict()['oauth_access_token']
+    twitch_oauth_refresh_token = doc_ref.get().to_dict()['oauth_refresh_token']
+    return twitch_oauth_access_token, twitch_oauth_refresh_token
+
+
 @bolt_app.command('/twitch')
 def twitch(ack, say, command):
     ack()
@@ -74,10 +82,7 @@ def twitch(ack, say, command):
 
     try:
         validate_twitch_access_token()
-
-        logger.info('----- get firestore twitch token -----')
-        doc_ref = firestore_client.collection('secretary_bot_v2').document('twitch')
-        twitch_oauth_access_token = doc_ref.get().to_dict()["oauth_access_token"]
+        twitch_oauth_access_token = get_firestore_twitch_token()[0]
 
         values = command['text'].split(' ')
 
@@ -241,10 +246,9 @@ def validate():
 
 def validate_twitch_access_token():
     logger.info('===== START validate twitch access token =====')
-    logger.info('----- get firestore twitch token -----')
-    doc_ref = firestore_client.collection('secretary_bot_v2').document('twitch')
-    twitch_oauth_access_token = doc_ref.get().to_dict()['oauth_access_token']
-    twitch_oauth_refresh_token = doc_ref.get().to_dict()["oauth_refresh_token"]
+    twitch_oauth_token = get_firestore_twitch_token()
+    twitch_oauth_access_token = twitch_oauth_token[0]
+    twitch_oauth_refresh_token = twitch_oauth_token[1]
 
     logger.info('----- GET twitch api validate access token -----')
     headers = {
@@ -286,10 +290,7 @@ def event_subscription_handler():
         logger.info(f'subscription_type={twitch_subscription_type}')
 
         validate_twitch_access_token()
-
-        logger.info('----- get firestore twitch token -----')
-        doc_ref = firestore_client.collection('secretary_bot_v2').document('twitch')
-        twitch_oauth_access_token = doc_ref.get().to_dict()["oauth_access_token"]
+        twitch_oauth_access_token = get_firestore_twitch_token()[0]
 
         logger.info('----- check message type notification -----')
         massage_type = 'Twitch-Eventsub-Message-Type'
