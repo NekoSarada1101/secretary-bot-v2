@@ -587,7 +587,7 @@ def notify_gcp_cost():
         yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
 
         top_query = f"""
-            SELECT service.description as service, sku.description as sku, SUM(cost) AS cost
+            SELECT service.description as service, sku.description as sku, ROUND(SUM(cost), 2) AS cost
             FROM `{TABLE_ID}`
             WHERE project.id = 'slackbot-288310' AND FORMAT_DATE('%Y-%m-%d',usage_start_time) = '{yesterday}'
             GROUP BY service, sku
