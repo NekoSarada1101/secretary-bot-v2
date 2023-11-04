@@ -17,14 +17,25 @@ secret_client = secretmanager.SecretManagerServiceClient()
 firestore_client = firestore.Client()
 bq_client = bigquery.Client()
 
-SLACK_BOT_TOKEN = secret_client.access_secret_version(request={'name': 'projects/831232013080/secrets/SECRETARY_BOT_V2_SLACK_BOT_TOKEN/versions/latest'}).payload.data.decode('UTF-8')
-SLACK_SIGNING_SECRET = secret_client.access_secret_version(request={'name': 'projects/831232013080/secrets/SECRETARY_BOT_V2_SLACK_SIGNING_SECRET/versions/latest'}).payload.data.decode('UTF-8')
-TWITCH_CLIENT_ID = secret_client.access_secret_version(request={'name': 'projects/831232013080/secrets/SECRETARY_BOT_V2_TWITCH_CLIENT_ID/versions/latest'}).payload.data.decode('UTF-8')
-TWITCH_CLIENT_SECRET = secret_client.access_secret_version(request={'name': 'projects/831232013080/secrets/SECRETARY_BOT_V2_TWITCH_CLIENT_SECRET/versions/latest'}).payload.data.decode('UTF-8')
+SLACK_BOT_TOKEN = secret_client.access_secret_version(
+    request={
+        'name': 'projects/831232013080/secrets/SECRETARY_BOT_V2_SLACK_BOT_TOKEN/versions/latest'}
+).payload.data.decode('UTF-8')
+SLACK_SIGNING_SECRET = secret_client.access_secret_version(
+    request={'name': 'projects/831232013080/secrets/SECRETARY_BOT_V2_SLACK_SIGNING_SECRET/versions/latest'}
+).payload.data.decode('UTF-8')
+TWITCH_CLIENT_ID = secret_client.access_secret_version(
+    request={
+        'name': 'projects/831232013080/secrets/SECRETARY_BOT_V2_TWITCH_CLIENT_ID/versions/latest'}
+).payload.data.decode('UTF-8')
+TWITCH_CLIENT_SECRET = secret_client.access_secret_version(
+    request={'name': 'projects/831232013080/secrets/SECRETARY_BOT_V2_TWITCH_CLIENT_SECRET/versions/latest'}
+).payload.data.decode('UTF-8')
 USER_ID = os.environ.get('USER_ID')
 TWITCH_SLACK_CHANNEL_ID = os.environ.get('TWITCH_SLACK_CHANNEL_ID')
 GCP_NOTICE_SLACK_CHANNEL_ID = os.environ.get('GCP_NOTICE_SLACK_CHANNEL_ID')
 TABLE_ID = os.environ.get('TABLE_ID')
+TWITCH_API_URL = 'https://api.twitch.tv'
 
 flask_app = Flask(__name__)
 bolt_app = App(token=SLACK_BOT_TOKEN, signing_secret=SLACK_SIGNING_SECRET)
@@ -77,7 +88,7 @@ def get_firestore_twitch_token():
 def get_twitch_user_info(twitch_oauth_access_token, user_id):
     logger.info('----- GET twitch api get user info -----')
     headers = twitch_api_header(twitch_oauth_access_token)
-    user_info = requests.get(f'https://api.twitch.tv/helix/users?id={user_id}', headers=headers).json()
+    user_info = requests.get(f'{TWITCH_API_URL}/helix/users?id={user_id}', headers=headers).json()
     logger.info(f'response={user_info}')
     return user_info
 
@@ -124,7 +135,8 @@ def twitch(ack, say, command):
             logger.info('===== START get now on streaming list =====')
             logger.info('----- GET twitch api get follow list -----')
             headers = twitch_api_header(twitch_oauth_access_token)
-            follow_info = requests.get(f'https://api.twitch.tv/helix/streams/followed?user_id={USER_ID}', headers=headers).json()
+            follow_info = requests.get(
+                f'{TWITCH_API_URL}/helix/streams/followed?user_id={USER_ID}', headers=headers).json()
             logger.info(f'response={follow_info}')
 
             attachments = []
@@ -195,12 +207,13 @@ def twitch(ack, say, command):
             logger.info('===== START set event subscription =====')
             logger.info('----- GET twitch api get user info -----')
             headers = twitch_api_header(twitch_oauth_access_token)
-            user_info = requests.get(f'https://api.twitch.tv/helix/users?login={values[1]}', headers=headers).json()
+            user_info = requests.get(f'{TWITCH_API_URL}/helix/users?login={values[1]}', headers=headers).json()
             logger.info(f'response={user_info}')
 
             logger.info('----- POST twitch api get app access token -----')
             token_info = requests.post(
-                f'https://id.twitch.tv/oauth2/token?client_id={TWITCH_CLIENT_ID}&client_secret={TWITCH_CLIENT_SECRET}&grant_type=client_credentials'
+                f'https://id.twitch.tv/oauth2/token?client_id={TWITCH_CLIENT_ID}'
+                f'&client_secret={TWITCH_CLIENT_SECRET}&grant_type=client_credentials'
             ).json()
             logger.info(f'response={token_info}')
 
@@ -209,7 +222,8 @@ def twitch(ack, say, command):
             set_twitch_subscription('channel.offline', user_info, token_info, say)
 
             logger.info('----- update firestore twitch streaming status -----')
-            firestore_client.collection('secretary_bot_v2').document('twitch_streaming').update({user_info['data'][0]['login']: False})
+            firestore_client.collection('secretary_bot_v2').document(
+                'twitch_streaming').update({user_info['data'][0]['login']: False})
             logger.info('===== END set event subscription =====')
 
     except Exception as e:
@@ -235,7 +249,8 @@ def set_twitch_subscription(sub_type, user_info, token_info, say):
             'secret': 'aaaaaaaaaa'
         }
     }
-    response = requests.post('https://api.twitch.tv/helix/eventsub/subscriptions', headers=headers, data=json.dumps(data))
+    response = requests.post('{TWITCH_API_URL}/helix/eventsub/subscriptions',
+                             headers=headers, data=json.dumps(data))
     logger.info(f'response={response.text}')
 
     logger.info('----- slack send chat message -----')
@@ -281,7 +296,8 @@ def validate_twitch_access_token():
     if response.status_code == 401:
         logger.info('----- POST twitch api refresh access token -----')
         response = requests.post(
-            f'https://id.twitch.tv/oauth2/token?client_id={TWITCH_CLIENT_ID}&client_secret={TWITCH_CLIENT_SECRET}&grant_type=refresh_token&refresh_token={twitch_oauth_refresh_token}',
+            f'https://id.twitch.tv/oauth2/token?client_id={TWITCH_CLIENT_ID}&client_secret={TWITCH_CLIENT_SECRET}'
+            f'&grant_type=refresh_token&refresh_token={twitch_oauth_refresh_token}',
             headers={'Content-Type': 'application/x-www-form-urlencoded'}
         ).json()
         logger.info(f'response={response}')
@@ -325,9 +341,10 @@ def event_subscription_handler():
             twitch_broadcaster_user_login = request_json['event']['broadcaster_user_login']
             if twitch_subscription_type == 'channel.update':
                 logger.info('----- get firestore twitch streaming -----')
-                now_streaming = firestore_client.collection('secretary_bot_v2').document('twitch_streaming').get().to_dict()[twitch_broadcaster_user_login]
+                now_streaming = firestore_client.collection('secretary_bot_v2').document(
+                    'twitch_streaming').get().to_dict()[twitch_broadcaster_user_login]
 
-                if now_streaming == False:
+                if now_streaming is False:
                     logger.info('===== SKIP event subscription handler =====')
                     return 'event subscription success!', 204
 
@@ -348,7 +365,7 @@ def event_subscription_handler():
             logger.info('----- GET twitch api get channel info -----')
             headers = twitch_api_header(twitch_oauth_access_token)
             channel_info = requests.get(
-                f'https://api.twitch.tv/helix/channels?broadcaster_id={twitch_broadcaster_user_id}',
+                f'{TWITCH_API_URL}/helix/channels?broadcaster_id={twitch_broadcaster_user_id}',
                 headers=headers
             ).json()
             logger.info(f'response={channel_info}')
@@ -362,9 +379,12 @@ def event_subscription_handler():
 
             if request_json['subscription']['type'] == 'stream.online':
                 logger.info('----- update firestore twitch streaming status -----')
-                firestore_client.collection('secretary_bot_v2').document('twitch_streaming').update({twitch_user_login: True})
+                firestore_client.collection('secretary_bot_v2').document(
+                    'twitch_streaming').update({twitch_user_login: True})
 
-                started_at = (datetime.strptime(request_json['event']['started_at'], '%Y-%m-%dT%H:%M:%SZ') + timedelta(hours=9)).strftime('%m月%d日 %H時%M分')
+                started_at = (
+                    datetime.strptime(request_json['event']['started_at'], '%Y-%m-%dT%H:%M:%SZ') + timedelta(hours=9)
+                ).strftime('%m月%d日 %H時%M分')
 
                 attachment = [{
                     'color': color,
@@ -412,7 +432,9 @@ def event_subscription_handler():
                     ]
                 }]
             elif request_json['subscription']['type'] == 'channel.update':
-                updated_at = (datetime.now() + timedelta(hours=9)).strftime('%m月%d日 %H時%M分')
+                updated_at = (
+                    datetime.now() + timedelta(hours=9)
+                ).strftime('%m月%d日 %H時%M分')
 
                 attachment = [{
                     'color': color,
@@ -461,14 +483,17 @@ def event_subscription_handler():
                 }]
             elif request_json['subscription']['type'] == 'stream.offline':
                 logger.info('----- update firestore twitch streaming status -----')
-                firestore_client.collection('secretary_bot_v2').document('twitch_streaming').update({twitch_user_login: False})
+                firestore_client.collection('secretary_bot_v2').document(
+                    'twitch_streaming').update({twitch_user_login: False})
                 return 'event subscription success!', 204
 
-            post_slack_message(TWITCH_SLACK_CHANNEL_ID,
-                               text=f'{twitch_broadcaster_user_name} now streaming {twitch_game_name}',
-                               attachments=json.dumps(attachment),
-                               username='Twitch',
-                               icon_emoji=':twitch:')
+            post_slack_message(
+                TWITCH_SLACK_CHANNEL_ID,
+                text=f'{twitch_broadcaster_user_name} now streaming {twitch_game_name}',
+                attachments=json.dumps(attachment),
+                username='Twitch',
+                icon_emoji=':twitch:'
+            )
 
             return 'event subscription success!', 204
 
@@ -498,11 +523,13 @@ def event_subscription_handler():
                 ]
             }]
 
-            post_slack_message(TWITCH_SLACK_CHANNEL_ID,
-                               text='Event Subscription',
-                               attachments=json.dumps(attachment),
-                               username='Twitch',
-                               icon_emoji=':twitch:')
+            post_slack_message(
+                TWITCH_SLACK_CHANNEL_ID,
+                text='Event Subscription',
+                attachments=json.dumps(attachment),
+                username='Twitch',
+                icon_emoji=':twitch:'
+            )
 
             return request_json['challenge'], 200
 
@@ -527,7 +554,9 @@ def response_message(event, ack, say):
 
     try:
         logger.info('----- get openai chat response text')
-        openai.api_key = secret_client.access_secret_version(request={'name': 'projects/831232013080/secrets/OPENAI_API_KEY/versions/latest'}).payload.data.decode('UTF-8')
+        openai.api_key = secret_client.access_secret_version(
+            request={'name': 'projects/831232013080/secrets/OPENAI_API_KEY/versions/latest'}
+        ).payload.data.decode('UTF-8')
 
         logger.info('----- get firestore openai chat history -----')
         doc_ref_event = firestore_client.collection('secretary_bot_v2').document('openai')
@@ -640,11 +669,13 @@ def notify_gcp_cost():
             ]
         }]
 
-        post_slack_message(GCP_NOTICE_SLACK_CHANNEL_ID,
-                           text='Notify Today GCP Cost',
-                           attachments=json.dumps(attachment),
-                           username='Notify GCP Cost',
-                           icon_emoji=':gcp:')
+        post_slack_message(
+            GCP_NOTICE_SLACK_CHANNEL_ID,
+            text='Notify Today GCP Cost',
+            attachments=json.dumps(attachment),
+            username='Notify GCP Cost',
+            icon_emoji=':gcp:'
+        )
 
         return 'notify gcp cost success!', 204
 
