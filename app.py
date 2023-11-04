@@ -5,6 +5,7 @@ import logging
 import json
 import random
 import openai
+import traceback
 from datetime import datetime, timedelta
 from slack_bolt import App
 from slack_bolt.adapter.flask import SlackRequestHandler
@@ -226,8 +227,8 @@ def twitch(ack, say, command):
                 'twitch_streaming').update({user_info['data'][0]['login']: False})
             logger.info('===== END set event subscription =====')
 
-    except Exception as e:
-        logger.error(e)
+    except Exception:
+        logger.error(traceback.format_exc())
         say('エラーが発生しました。ログを確認してください。')
     finally:
         logger.info('===== END slash command /twitch =====')
@@ -275,8 +276,8 @@ def validate():
 
     try:
         validate_twitch_access_token()
-    except Exception as e:
-        logger.error(e)
+    except Exception:
+        logger.error(traceback.format_exc)
     finally:
         logger.info('===== END check access token =====')
         return 'OK', 200
@@ -536,8 +537,8 @@ def event_subscription_handler():
 
             return request_json['challenge'], 200
 
-    except Exception as e:
-        logger.error(e)
+    except Exception:
+        logger.error(traceback.format_exc)
     finally:
         logger.info('===== END event subscription handler =====')
 
@@ -601,8 +602,8 @@ def response_message(event, ack, say):
         logger.info(f'payload={payload}')
         say(payload)
 
-    except Exception as e:
-        logger.error(e)
+    except Exception:
+        logger.error(traceback.format_exc)
     finally:
         logger.info('===== END text-davinci-003 mention response =====')
 
@@ -682,8 +683,8 @@ def notify_gcp_cost():
 
         return 'notify gcp cost success!', 204
 
-    except Exception as e:
-        logger.error(e)
+    except Exception:
+        logger.error(traceback.format_exc)
     finally:
         logger.info('===== END notify gcp cost =====')
 
@@ -702,8 +703,8 @@ def openai(ack, say, command):
             firestore_client.collection('secretary_bot_v2').document('openai').update({'history': ''})
 
             say('reset openai chat history')
-    except Exception as e:
-        logger.error(e)
+    except Exception:
+        logger.error(traceback.format_exc)
     finally:
         logger.info('===== END slash command /openai =====')
 
