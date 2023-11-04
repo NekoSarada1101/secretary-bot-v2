@@ -374,6 +374,7 @@ def event_subscription_handler():
             twitch_broadcaster_user_name = request_json['event']['broadcaster_user_name']
             twitch_channel_title = channel_info['data'][0]['title']
             twitch_game_name = channel_info['data'][0]['game_name']
+            twitch_stream_title = channel_info['data'][0]['title']
             twitch_profile_image_url = user_info['data'][0]['profile_image_url']
             twitch_user_login = user_info['data'][0]['login']
 
@@ -489,7 +490,7 @@ def event_subscription_handler():
 
             post_slack_message(
                 TWITCH_SLACK_CHANNEL_ID,
-                text=f'{twitch_broadcaster_user_name} now streaming {twitch_game_name}',
+                text=f'{twitch_broadcaster_user_name}さんがライブ配信中です！ {twitch_game_name} : {twitch_stream_title}',
                 attachments=json.dumps(attachment),
                 username='Twitch',
                 icon_emoji=':twitch:'
