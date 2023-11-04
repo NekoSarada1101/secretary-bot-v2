@@ -249,8 +249,10 @@ def set_twitch_subscription(sub_type, user_info, token_info, say):
             'secret': 'aaaaaaaaaa'
         }
     }
-    response = requests.post('{TWITCH_API_URL}/helix/eventsub/subscriptions',
-                             headers=headers, data=json.dumps(data))
+    response = requests.post(
+        f'{TWITCH_API_URL}/helix/eventsub/subscriptions',
+        headers=headers, data=json.dumps(data)
+    )
     logger.info(f'response={response.text}')
 
     logger.info('----- slack send chat message -----')
