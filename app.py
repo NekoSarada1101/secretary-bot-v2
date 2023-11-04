@@ -335,11 +335,11 @@ def event_subscription_handler():
         massage_type_notification = 'notification'
         massage_type_verification = 'webhook_callback_verification'
 
-        twitch_broadcaster_user_id = request_json["event"]["broadcaster_user_id"]
-        user_info = get_twitch_user_info(twitch_oauth_access_token, user_id=twitch_broadcaster_user_id)
-
         if massage_type_notification == request.headers[massage_type]:
             logger.info(f'message_type={massage_type_notification}')
+
+            twitch_broadcaster_user_id = request_json["event"]["broadcaster_user_id"]
+            user_info = get_twitch_user_info(twitch_oauth_access_token, user_id=twitch_broadcaster_user_id)
 
             twitch_broadcaster_user_login = request_json['event']['broadcaster_user_login']
             if twitch_subscription_type == 'channel.update':
@@ -503,6 +503,9 @@ def event_subscription_handler():
 
         elif massage_type_verification == request.headers[massage_type]:
             logger.info(f'message_type={massage_type_verification}')
+
+            twitch_broadcaster_user_id = request_json["condition"]["broadcaster_user_id"]
+            user_info = get_twitch_user_info(twitch_oauth_access_token, user_id=twitch_broadcaster_user_id)
 
             color = '#'+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
             twitch_user_login = user_info['data'][0]['login']
