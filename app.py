@@ -277,7 +277,7 @@ def validate():
     try:
         validate_twitch_access_token()
     except Exception:
-        logger.error(traceback.format_exc)
+        logger.error(traceback.format_exc())
     finally:
         logger.info('===== END check access token =====')
         return 'OK', 200
@@ -538,7 +538,7 @@ def event_subscription_handler():
             return request_json['challenge'], 200
 
     except Exception:
-        logger.error(traceback.format_exc)
+        logger.error(traceback.format_exc())
     finally:
         logger.info('===== END event subscription handler =====')
 
@@ -603,7 +603,7 @@ def response_message(event, ack, say):
         say(payload)
 
     except Exception:
-        logger.error(traceback.format_exc)
+        logger.error(traceback.format_exc())
     finally:
         logger.info('===== END text-davinci-003 mention response =====')
 
@@ -684,7 +684,7 @@ def notify_gcp_cost():
         return 'notify gcp cost success!', 204
 
     except Exception:
-        logger.error(traceback.format_exc)
+        logger.error(traceback.format_exc())
     finally:
         logger.info('===== END notify gcp cost =====')
 
@@ -704,7 +704,7 @@ def openai(ack, say, command):
 
             say('reset openai chat history')
     except Exception:
-        logger.error(traceback.format_exc)
+        logger.error(traceback.format_exc())
     finally:
         logger.info('===== END slash command /openai =====')
 
