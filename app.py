@@ -217,9 +217,9 @@ def twitch(ack, say, command):
             ).json()
             logger.info(f'response={token_info}')
 
-            set_twitch_subscription('channel.online', user_info, token_info, say)
+            set_twitch_subscription('stream.online', user_info, token_info, say)
             set_twitch_subscription('channel.update', user_info, token_info, say)
-            set_twitch_subscription('channel.offline', user_info, token_info, say)
+            set_twitch_subscription('stream.offline', user_info, token_info, say)
 
             logger.info('----- update firestore twitch streaming status -----')
             firestore_client.collection('secretary_bot_v2').document(
