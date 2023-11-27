@@ -351,19 +351,19 @@ def event_subscription_handler():
                     logger.info('===== SKIP event subscription handler =====')
                     return 'event subscription success!', 204
 
-            logger.info('----- get firestore twitch eventsub id -----')
-            doc_ref_event = firestore_client.collection('secretary_bot_v2').document('twitch_eventsub')
-            converted_twitch_subscription_type = request_json['subscription']['type'].replace('.', '_')
-            twitch_subscription_id = request_json['subscription']['id']
-            if doc_ref_event.get().to_dict()[converted_twitch_subscription_type] == twitch_subscription_id:
-                logger.info('===== SKIP event subscription handler =====')
-                return 'event subscription success!', 204
+            # logger.info('----- get firestore twitch eventsub id -----')
+            # doc_ref_event = firestore_client.collection('secretary_bot_v2').document('twitch_eventsub')
+            # converted_twitch_subscription_type = request_json['subscription']['type'].replace('.', '_')
+            # twitch_subscription_id = request_json['subscription']['id']
+            # if doc_ref_event.get().to_dict()[converted_twitch_subscription_type] == twitch_subscription_id:
+            #     logger.info('===== SKIP event subscription handler =====')
+            #     return 'event subscription success!', 204
 
-            logger.info('----- update firestore twitch eventsub id -----')
-            subscription_id = {
-                converted_twitch_subscription_type: twitch_subscription_id,
-            }
-            firestore_client.collection('secretary_bot_v2').document('twitch_eventsub').update(subscription_id)
+            # logger.info('----- update firestore twitch eventsub id -----')
+            # subscription_id = {
+            #     converted_twitch_subscription_type: twitch_subscription_id,
+            # }
+            # firestore_client.collection('secretary_bot_v2').document('twitch_eventsub').update(subscription_id)
 
             logger.info('----- GET twitch api get channel info -----')
             headers = twitch_api_header(twitch_oauth_access_token)
@@ -670,7 +670,13 @@ def notify_gcp_cost():
                     'text': {
                         'type': 'mrkdwn',
                         'text':
-                        f'*{yesterday} Cost Top3*\n*{top_query_result[0]["service"]} : {top_query_result[0]["sku"]}*\n{top_query_result[0]["cost"]} JPY\n\n*{top_query_result[1]["service"]} : {top_query_result[1]["sku"]}*\n{top_query_result[1]["cost"]} JPY\n\n*{top_query_result[2]["service"]} : {top_query_result[2]["sku"]}*\n{top_query_result[2]["cost"]} JPY'
+                        f'*{yesterday} Cost Top3*\n'
+                        f'*{top_query_result[0]["service"]} : {top_query_result[0]["sku"]}*\n'
+                        f'{top_query_result[0]["cost"]} JPY\n\n'
+                        f'*{top_query_result[1]["service"]} : {top_query_result[1]["sku"]}*\n'
+                        f'{top_query_result[1]["cost"]} JPY\n\n'
+                        f'*{top_query_result[2]["service"]} : {top_query_result[2]["sku"]}*\n'
+                        f'{top_query_result[2]["cost"]} JPY'
                     }
                 }
             ]
